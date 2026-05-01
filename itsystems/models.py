@@ -293,7 +293,9 @@ class ITSystemRecord(models.Model):
             self.business_service_owner = self.__get_user_fk(dict.get('business_service_owner'),'business_service_owner')
             self.sensitivity =  self.__get_choice_fk(dict.get('sensitivity'),Sensitivity)
             self.system_type =  self.__get_choice_fk(dict.get('system_type'),SystemType)
-            self.vital_records = dict.get('vital_records').lower().strip()=='true'
+            vital_records = str(dict.get('vital_records'))
+            if vital_records:
+                self.vital_records = vital_records.strip().lower()=='true'
         else:
             self.division = Division.objects.get(pk=dict.get('division_id'))
             self.status = Status.objects.get(pk=dict.get('status_id'))

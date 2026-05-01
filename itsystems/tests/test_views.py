@@ -8,7 +8,7 @@ class ViewsTestCase(ApiTestCase):
         Test the it systems register view.
         Will be expanded upon after the register view is completed.
         """
-        url = reverse("it systems register")
+        url = reverse("it_systems_register")
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
 

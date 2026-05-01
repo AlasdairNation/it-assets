@@ -9,8 +9,10 @@
         <h2 style="color:Tomato">Failures</h2>
         <table>
             <thead>
-                <th>Record</th>
-                <th>Reason</th>
+                <tr>
+                    <th>Record</th>
+                    <th>Reason</th>
+                </tr>
             </thead>
             <tbody>
                 {% for failure in failed %}
@@ -30,9 +32,11 @@
             <h3>{{update.record}}</h3>
             <table>
                 <thead>
-                    <th>Field</th>
-                    <th>New</th>
-                    <th>Old</th>
+                    <tr>
+                        <th>Field</th>
+                        <th>New</th>
+                        <th>Old</th>
+                    </tr>
                 </thead>
                 <tbody>
                 {% for change in update.changes%}
@@ -57,9 +61,11 @@
             <h3>{{create.record}}</h3>
             <table>
                 <thead>
-                    <th>Field</th>
-                    <th>New</th>
-                    <th>Old</th>
+                    <tr>
+                        <th>Field</th>
+                        <th>New</th>
+                        <th>Old</th>
+                    </tr>
                 </thead>
                 <tbody>
                 {% for change in create.changes%}

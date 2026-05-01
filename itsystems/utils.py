@@ -55,7 +55,7 @@ def ImportCSV(request):
             # Search for existing record in database
             try:
                 found_record = ITSystemRecord.objects.get(system_id=record['system_id'])
-            except: 
+            except ITSystemRecord.DoesNotExist as e: 
                 found_record = None
         
             try:
@@ -102,9 +102,6 @@ def ImportCSV(request):
                     error_message = str(e)
                 failed_list.append({"record":record['system_id'], "changes": error_message})
 
-    else:
-        print(validate_results['message'])
-
     return {'validation':{'valid':validate_results['valid'], 'message':validate_results['message']},'created':create_list,'updated':update_list, 'failed':failed_list}
 
 
@@ -121,7 +118,7 @@ def __validate_csv(csv_file):
         # Checks that file isn't chunked / over 2 mb
         if not csv_file.multiple_chunks():
             raw_text = csv_file.read().decode(encoding='utf-8', errors='replace')
-            csv_headers = raw_text.split("\r\n")[0].split(",")
+            csv_headers = raw_text.splitlines()[0].split(",")
             model_fields = __get_model_fields()
             # Checks that csv has the correct headers
             if all(csv == model.name for csv, model in zip(csv_headers, model_fields)):

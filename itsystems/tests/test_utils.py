@@ -8,11 +8,11 @@ from django.contrib.auth.models import User
 
 from .test_model import create_random_record
 from itsystems.models import ITSystemRecord
-from itsystems.csv_handling import __validate_csv as validate
-from itsystems.csv_handling import ExportCSV, ImportCSV
+from itsystems.utils import __validate_csv as validate
+from itsystems.utils import ExportCSV, ImportCSV
 
 
-class CSVHandlingTests(TestCase):
+class UtilsTests(TestCase):
     class FauxCSVFile:
         def __init__(self,name, is_multiple_chunks, raw_text):
             self.raw_text = raw_text
@@ -44,16 +44,16 @@ class CSVHandlingTests(TestCase):
         A file is valid if it's a csv, is under 2mb, and matches the required headers.
         """
 
-        not_csv = CSVHandlingTests.FauxCSVFile(name='test.txt', is_multiple_chunks=None, raw_text=None)
-        above_2mb = CSVHandlingTests.FauxCSVFile(name='test.csv', is_multiple_chunks=True, raw_text=None)
+        not_csv = UtilsTests.FauxCSVFile(name='test.txt', is_multiple_chunks=None, raw_text=None)
+        above_2mb = UtilsTests.FauxCSVFile(name='test.csv', is_multiple_chunks=True, raw_text=None)
 
         incorrect_header_fields = ITSystemRecord._meta.get_fields()
         incorrect_csv_text = ','.join(get_field_names(incorrect_header_fields)) + "\r\nrandomtext"
-        incorrect_headers = CSVHandlingTests.FauxCSVFile(name='test.csv', is_multiple_chunks=False, raw_text=incorrect_csv_text)
+        incorrect_headers = UtilsTests.FauxCSVFile(name='test.csv', is_multiple_chunks=False, raw_text=incorrect_csv_text)
 
         correct_header_fields = ITSystemRecord._meta.get_fields()[1:-4]
         csv_text = ','.join(get_field_names(correct_header_fields)) + "\r\nrandomtext"
-        correct_headers = CSVHandlingTests.FauxCSVFile(name='test.csv', is_multiple_chunks=False, raw_text=csv_text)
+        correct_headers = UtilsTests.FauxCSVFile(name='test.csv', is_multiple_chunks=False, raw_text=csv_text)
 
         self.assertIs(validate(not_csv)['valid'],False)
         self.assertIs(validate(above_2mb)['valid'],False)
@@ -144,5 +144,5 @@ def get_field_names(field_list):
 def get_faux_post(user):
     faux_response = HttpResponse()
     ExportCSV(faux_response) 
-    faux_file = CSVHandlingTests.FauxCSVFile(name='test.csv', is_multiple_chunks=False, raw_text=faux_response.content.decode(encoding='utf-8', errors='replace'))
-    return CSVHandlingTests.FauxPOST(faux_file, user)
+    faux_file = UtilsTests.FauxCSVFile(name='test.csv', is_multiple_chunks=False, raw_text=faux_response.content.decode(encoding='utf-8', errors='replace'))
+    return UtilsTests.FauxPOST(faux_file, user)

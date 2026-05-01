@@ -1,7 +1,7 @@
 from datetime import date, datetime
 
 from django.shortcuts import render
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import ListView, View
 from django.http import HttpResponse
 from django.db.models import Q
@@ -9,7 +9,7 @@ from django.db.models import Q
 from itassets.utils import get_next_pages, get_previous_pages
 
 from .models import ITSystemRecord
-from .csv_handling import ExportCSV, ImportCSV
+from .utils import ExportCSV, ImportCSV
 
 class ITSystemsRegister(LoginRequiredMixin, ListView):
     """A custom user facing view to display the IT Systems Register"""
@@ -65,8 +65,11 @@ class ExportRegisterAsCSV(LoginRequiredMixin, View):
         ExportCSV(response)
         return response
 
-class ImportRegisterChangesFromCSV(LoginRequiredMixin, View):
+class ImportRegisterChangesFromCSV(LoginRequiredMixin, PermissionRequiredMixin, View):
     """A custom view to allow the user to import changes to the IT Systems Register via a csv"""
+
+    # Permissions locked to people that can already edit the register
+    permission_required = ["itsystems.change_itsystemrecord", "itsystems.add_itsystemrecord"]
 
     # Displays the initial file upload form
     def get(self, request, *args, **kwargs):
@@ -86,4 +89,4 @@ class ImportRegisterChangesFromCSV(LoginRequiredMixin, View):
             print(results['validation'])
             # Displays error message
             response = render(request, "admin/itsystems/itsystemrecord/upload_csv.html", context = results['validation'])
-        return HttpResponse(response)
+        return response

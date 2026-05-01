@@ -39,7 +39,7 @@ class ITSystemRecordAdmin(VersionAdmin):
     list_display = (
         "system_id_name",
         "status",
-        "division__name",
+        "division",
         "business_service_owner",
         "system_owner",
         "technology_custodian",
