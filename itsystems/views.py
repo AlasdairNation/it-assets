@@ -4,6 +4,9 @@ from django.shortcuts import render
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import ListView, View
 from django.http import HttpResponse
+from django.db.models import Q
+
+from itassets.utils import get_next_pages, get_previous_pages
 
 from .models import ITSystemRecord
 from .utils import ExportCSV, ImportCSV
@@ -20,7 +23,34 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["site_title"] = "Office of Information Management"
         context["site_acronym"] = "OIM"
         context["page_title"] = "IT Systems Register"
-        return super().get_context_data(**kwargs)
+        # Pass in any query string.
+        if "q" in self.request.GET:
+            context["query_string"] = self.request.GET["q"]
+        context["object_count"] = len(self.get_queryset())
+        context["previous_pages"] = get_previous_pages(context["page_obj"])
+        context["next_pages"] = get_next_pages(context["page_obj"])
+        return context
+    
+    def get_queryset(self):
+        queryset = (
+            ITSystemRecord.objects.all()
+            .select_related(
+                "division",
+            )
+        )
+
+        # Filter the queryset, if required.
+        if "q" in self.request.GET and self.request.GET["q"]:
+            query_str = self.request.GET["q"]
+            queryset = queryset.filter(
+                Q(system_id__icontains=query_str)
+                | Q(name__icontains=query_str)
+                | Q(description__icontains=query_str)
+            )
+
+        queryset = queryset.order_by("system_id")
+
+        return queryset
     
 class ExportRegisterAsCSV(LoginRequiredMixin, View):
     """A custom view to return a representation of the IT Systems Register as a csv"""
