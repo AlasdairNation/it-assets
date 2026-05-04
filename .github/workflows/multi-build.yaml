@@ -8,7 +8,7 @@ on:
     - cron: '5 21 * * 1-5'
   push:
     branches:
-      - master
+      - main
       - dev
     tags:
       - '*'
