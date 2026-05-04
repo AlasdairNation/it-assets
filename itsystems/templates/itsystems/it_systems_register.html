@@ -14,6 +14,7 @@
         }
         #register-table{
             width: 100%;
+            font-size:14px;
         }
         #sticky-col{
             position:sticky; 
@@ -40,7 +41,7 @@
             position:fixed;
             bottom:0;
             width:100%;
-            z-index:-1;
+            z-index:2;
         }
     </style>
 </head>
@@ -56,7 +57,7 @@
                     <form action="" method="get">
                         <div class="row">
                             <div class="d-none d-md-block col-md-2">
-                                <label for="search_field">Search:</label>
+                                <label for="search_field" style="vertical-align: middle;">Search:</label>
                             </div>
                             <div class="col-sm-12 col-md-10 col-lg-7">
                                 <input id="search_field"
@@ -89,20 +90,34 @@
                         <th>System Owner</th>
                         <th>Technical Custodian</th>
                         <th>Information Custodian</th>
+                        <th>Seasonality</th>
+                        <th>Availability</th>
                         <th>Link</th>
+                        <th>Description</th>
+                        <th>File Store Link</th>
+                        <th>Vital Records</th>
+                        <th>Disposal Authority</th>
+                        <th>Retention and Disposal</th>
+                        <th>UBCS</th>
+                        <th>Sensitivity</th>
+                        <th>System Type</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for obj in object_list %}
                         <tr>
                             <td id="sticky-col">
-                                <b>{{obj.system_id_name}}</b>
+                                <p style="width:30ch">
+                                    <b>{{obj.system_id_name}}</b>
+                                </p>
                             </td>
-                            <td>
+                            <td style="white-space:nowrap">
                                 {{ obj.status}}
                             </td>
                             <td>
-                                {{ obj.division}}
+                                <p style = "width:40ch">
+                                    {{ obj.division}}
+                                </p>
                             </td>
                             <td>
                                 {{ obj.business_service_owner.name |default_if_none:"" }}
@@ -123,14 +138,47 @@
                                 <a href="mailto:{{ obj.technology_custodian.email |default_if_none:"" }}">{{ obj.technology_custodian.email |default_if_none:"" }}</a>
                                 {% if obj.technology_custodian.mobile_phone %}<br><a href="tel:{{ obj.technology_custodian.mobile_phone }}">{{ obj.technology_custodian.mobile_phone }}</a>{% endif %}
                             </td>
-                        <td>
+                            <td>
                                 {{ obj.information_custodian.name |default_if_none:"" }}
                                 <br>
                                 <a href="mailto:{{ obj.information_custodian.email |default_if_none:"" }}">{{ obj.information_custodian.email |default_if_none:"" }}</a>
                                 {% if obj.information_custodian.mobile_phone %}<br><a href="tel:{{ obj.information_custodian.mobile_phone }}">{{ obj.information_custodian.mobile_phone }}</a>{% endif %}
                             </td>
-                        <td>
-                                <a href="{{ obj.link |default_if_none:"" }}">{{obj.link}}</a>
+                            <td style="white-space:nowrap">
+                                {{obj.seasonality|default_if_none:""}}
+                            </td>
+                            <td style="white-space:nowrap">
+                                {{obj.availability|default_if_none:""}}
+                            </td>
+                            <td>
+                                <a href="{{ obj.link |default_if_none:"" }}">{{obj.link | default_if_none:""}}</a>
+                            </td>
+                            <td>
+                                <p style = "width:50ch">
+                                    {{obj.description|default_if_none:""}}
+                                </p>
+                            </td>
+                            <td>
+                                <a href="{{ obj.file_store_link |default_if_none:"" }}">{{obj.file_store_link | default_if_none:""}}</a>
+                            </td>
+                            <td>
+                                {{obj.vital_records|default_if_none:"False"}}
+                            </td>
+                            <td>
+                                {{obj.disposal_authority|default_if_none:""}}
+                            </td>
+                            <td>
+                                {{obj.retention_and_disposal|default_if_none:""}}
+                            </td> 
+                            <td>
+                                {{obj.ubcs|default_if_none:""}}
+                            </td>        
+                            <td style="white-space:nowrap">
+                                {{obj.sensitivity|default_if_none:""}}
+                            </td>         
+                            <td style="white-space:nowrap">
+                                {{obj.system_type|default_if_none:""}}
+                            </td>       
                         </tr>
                     {% endfor %}
                 </tbody>
