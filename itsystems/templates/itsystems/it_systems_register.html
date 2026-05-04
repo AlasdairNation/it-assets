@@ -3,138 +3,118 @@
 {% block page_content %}
 <head>
     <style>
-        .table-container {
-            max-height: 65dvh;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            width: 100%;
-            z-index: -1;
+        #parent-container{
+            max-height:calc(100dvh-);
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            height:inherit;
+        #page-headers{
         }
-        thead th {
-            position: sticky;
-            top: 0;
-            background-color: #f1f1f1;
-            z-index: 1;
-            white-space: nowrap;
+        #table-container{
+            max-height:calc(80dvh - 190px);
         }
-        th, td {
-            padding: 10px;
-            text-align: left;
-            border: 1px solid #ddd;
+        #register-table{
+            overflow-y:auto;
+            overflow-x:auto;
         }
         footer{
-            position: fixed;
-            bottom: 0;
-            height:50px;
-            width: 100%;
-            z-index: -1;
+            position:fixed;
+            bottom:0;
+            width:100%;
         }
     </style>
 </head>
 <body>
-    <div class="container-fluid p-5" style="height:inherit;">
-        <div class="row">
-            <h1>{{ page_title }}</h1>
-        </div>
-        <div class="row">
-            <div class="col">
+    <div id = "parent-container" class="d-flex container">
+        <div id="page-headers">
+            <div class="row">
+                <h1>{{ page_title }}</h1>
+            </div>
                 <div class="row pt-3">
-                    <div class="col">
-                        <!-- Search bar -->
-                        <form action="" method="get">
-                            <div class="row">
-                                <div class="d-none d-md-block col-md-2">
-                                    <label for="search_field">Search:</label>
-                                </div>
-                                <div class="col-sm-12 col-md-10 col-lg-7">
-                                    <input id="search_field"
-                                            type="text"
-                                            class="form-control"
-                                            name="q"
-                                            placeholder="Search name or description"
-                                            value="{{ query_string }}">
-                                </div>
-                                {% if query_string %}<div class="d-none d-lg-block col-lg-3">{{ object_count }} results</div>{% endif %}
-                            </div>
-                        </form>
-                    </div>
-                    {% if object_list %}
-                        <!-- Pagination -->
                         <div class="col">
-                            <div class="d-flex justify-content-end">{% include "pagination.html" %}</div>
+                            <!-- Search bar -->
+                            <form action="" method="get">
+                                <div class="row">
+                                    <div class="d-none d-md-block col-md-2">
+                                        <label for="search_field">Search:</label>
+                                    </div>
+                                    <div class="col-sm-12 col-md-10 col-lg-7">
+                                        <input id="search_field"
+                                                type="text"
+                                                class="form-control"
+                                                name="q"
+                                                placeholder="Search name or description"
+                                                value="{{ query_string }}">
+                                    </div>
+                                    {% if query_string %}<div class="d-none d-lg-block col-lg-3">{{ object_count }} results</div>{% endif %}
+                                </div>
+                            </form>
                         </div>
-                    {% endif %}
+                        {% if object_list %}
+                            <!-- Pagination -->
+                            <div class="col">
+                                <div class="d-flex justify-content-end">{% include "pagination.html" %}</div>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
-                <!-- .row -->
-                {% if object_list %}
-                    <div class="row">
-                        <div class="col">
-                            <div class = "table-container">
-                                <table class="table table-striped table-sm table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>System ID - Name</th>
-                                            <th>Status</th>
-                                            <th>Division</th>
-                                            <th>Business Service Owner</th>
-                                            <th>System Owner</th>
-                                            <th>Technical Custodian</th>
-                                            <th>Information Custodian</th>
-                                            <th>Link</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for obj in object_list %}
-                                            <tr>
-                                                <td>
-                                                    <b>{{obj.system_id_name}}</b>
-                                                </td>
-                                                <td>
-                                                    {{ obj.status}}
-                                                </td>
-                                                <td>
-                                                    {{ obj.division}}
-                                                </td>
-                                                <td>
-                                                    {{ obj.business_service_owner.name |default_if_none:"" }}
-                                                    <br>
-                                                    <a href="mailto:{{ obj.business_service_owner.email |default_if_none:"" }}">{{ obj.business_service_owner.email |default_if_none:"" }}</a>
-                                                    <br>
-                                                    {% if obj.business_service_owner.mobile_phone %}<a href="tel:{{ obj.business_service_owner.mobile_phone }}">{{ obj.business_service_owner.mobile_phone }}</a>{% endif %}
-                                                </td>
-                                                <td>
-                                                    {{ obj.system_owner.name |default_if_none:"" }}
-                                                    <br>
-                                                    <a href="mailto:{{ obj.system_owner.email |default_if_none:"" }}">{{ obj.system_owner.email |default_if_none:"" }}</a>
-                                                    {% if obj.system_owner.mobile_phone %}<br><a href="tel:{{ obj.system_owner.mobile_phone }}">{{ obj.system_owner.mobile_phone }}</a>{% endif %}
-                                                </td>
-                                                <td>
-                                                    {{ obj.technology_custodian.name |default_if_none:"" }}
-                                                    <br>
-                                                    <a href="mailto:{{ obj.technology_custodian.email |default_if_none:"" }}">{{ obj.technology_custodian.email |default_if_none:"" }}</a>
-                                                    {% if obj.technology_custodian.mobile_phone %}<br><a href="tel:{{ obj.technology_custodian.mobile_phone }}">{{ obj.technology_custodian.mobile_phone }}</a>{% endif %}
-                                                </td>
-                                            <td>
-                                                    {{ obj.information_custodian.name |default_if_none:"" }}
-                                                    <br>
-                                                    <a href="mailto:{{ obj.information_custodian.email |default_if_none:"" }}">{{ obj.information_custodian.email |default_if_none:"" }}</a>
-                                                    {% if obj.information_custodian.mobile_phone %}<br><a href="tel:{{ obj.information_custodian.mobile_phone }}">{{ obj.information_custodian.mobile_phone }}</a>{% endif %}
-                                                </td>
-                                            <td>
-                                                    <a href="{{ obj.link |default_if_none:"" }}">{{obj.link}}</a>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                {% endif %}
+        </div>
+        <div id="table-container" class="d-flex container-fluid">
+            <div id ="register-table" class="d-flex flex-fill">
+                <table class="table table-striped table-sm table-hover">
+                    <thead style = "position: sticky;top: 0; white-space:nowrap;">
+                        <tr>
+                            <th>System ID - Name</th>
+                            <th>Status</th>
+                            <th>Division</th>
+                            <th>Business Service Owner</th>
+                            <th>System Owner</th>
+                            <th>Technical Custodian</th>
+                            <th>Information Custodian</th>
+                            <th>Link</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for obj in object_list %}
+                            <tr>
+                                <td>
+                                    <b>{{obj.system_id_name}}</b>
+                                </td>
+                                <td>
+                                    {{ obj.status}}
+                                </td>
+                                <td>
+                                    {{ obj.division}}
+                                </td>
+                                <td>
+                                    {{ obj.business_service_owner.name |default_if_none:"" }}
+                                    <br>
+                                    <a href="mailto:{{ obj.business_service_owner.email |default_if_none:"" }}">{{ obj.business_service_owner.email |default_if_none:"" }}</a>
+                                    <br>
+                                    {% if obj.business_service_owner.mobile_phone %}<a href="tel:{{ obj.business_service_owner.mobile_phone }}">{{ obj.business_service_owner.mobile_phone }}</a>{% endif %}
+                                </td>
+                                <td>
+                                    {{ obj.system_owner.name |default_if_none:"" }}
+                                    <br>
+                                    <a href="mailto:{{ obj.system_owner.email |default_if_none:"" }}">{{ obj.system_owner.email |default_if_none:"" }}</a>
+                                    {% if obj.system_owner.mobile_phone %}<br><a href="tel:{{ obj.system_owner.mobile_phone }}">{{ obj.system_owner.mobile_phone }}</a>{% endif %}
+                                </td>
+                                <td>
+                                    {{ obj.technology_custodian.name |default_if_none:"" }}
+                                    <br>
+                                    <a href="mailto:{{ obj.technology_custodian.email |default_if_none:"" }}">{{ obj.technology_custodian.email |default_if_none:"" }}</a>
+                                    {% if obj.technology_custodian.mobile_phone %}<br><a href="tel:{{ obj.technology_custodian.mobile_phone }}">{{ obj.technology_custodian.mobile_phone }}</a>{% endif %}
+                                </td>
+                            <td>
+                                    {{ obj.information_custodian.name |default_if_none:"" }}
+                                    <br>
+                                    <a href="mailto:{{ obj.information_custodian.email |default_if_none:"" }}">{{ obj.information_custodian.email |default_if_none:"" }}</a>
+                                    {% if obj.information_custodian.mobile_phone %}<br><a href="tel:{{ obj.information_custodian.mobile_phone }}">{{ obj.information_custodian.mobile_phone }}</a>{% endif %}
+                                </td>
+                            <td>
+                                    <a href="{{ obj.link |default_if_none:"" }}">{{obj.link}}</a>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
