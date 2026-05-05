@@ -3,8 +3,7 @@ import io
 import reversion
 from .models import ITSystemRecord
 
-
-def ExportCSV(response):
+def export_csv(response):
     """
     Exports the IT Systems Register to a csv, writing it into a HttpResponse object passed to it.
     """
@@ -37,7 +36,7 @@ def ExportCSV(response):
         ]
         writer.writerow(record_vals)
 
-def ImportCSV(request):
+def import_csv(request):
     """
     Updates the IT System Register database from a csv contained within an Http Post Request.
     This function returns a dictionary containing the validation results and 3 lists respectively containing details of records created, records updated, and records that failed to process.
@@ -103,6 +102,14 @@ def ImportCSV(request):
                 failed_list.append({"record":record['system_id'], "changes": error_message})
 
     return {'validation':{'valid':validate_results['valid'], 'message':validate_results['message']},'created':create_list,'updated':update_list, 'failed':failed_list}
+
+
+def retrieve(cls, id):
+    try:
+        model = cls.objects.get(id=id)
+    except Exception:
+        model = None
+    return model
 
 
 def __validate_csv(csv_file):
