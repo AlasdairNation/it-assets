@@ -4,7 +4,7 @@
 <head>
     <style>
         #parent-container{
-            max-height: calc(100dvh - 150px);
+            max-height: calc(100dvh - 120px);
         }
         #page-headers{
         }
@@ -28,6 +28,11 @@
             top: 0; 
             white-space:nowrap; 
             z-index:2;
+        }
+        select{
+            max-width:2.5ch;
+            border: 0px;
+            text-indent:900px;
         }
         
         th {
@@ -54,7 +59,7 @@
             <div class="row pt-3">
                 <div class="col">
                     <!-- Search bar -->
-                    <form action="" method="get">
+                    <form id="filters" action="" method="get">
                         <div class="row">
                             <div class="d-none d-md-block col-md-2">
                                 <label for="search_field" style="vertical-align: middle;">Search:</label>
@@ -67,7 +72,7 @@
                                         placeholder="Search name or description"
                                         value="{{ query_string }}">
                             </div>
-                            {% if query_string %}<div class="d-none d-lg-block col-lg-3">{{ object_count }} results</div>{% endif %}
+                            <div class="d-none d-lg-block col-lg-3"> Viewing {{ object_count }} record(s)</div>
                         </div>
                     </form>
                 </div>
@@ -79,28 +84,138 @@
                 {% endif %}
             </div>
         </div>
+        <div style="padding:10px">
+            {% if status_filter %}
+                <button type="button" class="btn btn-outline-secondary" onClick="clearField('status')">Status | {{status_filter.name}}  ✕</button>
+            {% endif %}
+            {% if division_filter %}
+                <button type="button" class="btn btn-outline-secondary" onClick="clearField('division')">Division | {{division_filter.name}}  ✕</button>
+            {% endif %}
+            {% if seasonality_filter %}
+                <button type="button" class="btn btn-outline-secondary" onClick="clearField('seasonality')">Seasonality | {{seasonality_filter.name}}  ✕</button>
+            {% endif %}
+            {% if availability_filter %}
+                <button type="button" class="btn btn-outline-secondary" onClick="clearField('availability')">Availability | {{availability_filter.name}}  ✕</button>
+            {% endif %}
+            {% if vital_records_filter %}
+                <button type="button" class="btn btn-outline-secondary" onClick="clearField('vital_records')">Vital Records | {{vital_records_filter}}  ✕</button>
+            {% endif %}
+            {% if sensitivity_filter %}
+                <button type="button" class="btn btn-outline-secondary" onClick="clearField('sensitivity')">Sensitivity | {{sensitivity_filter.name}}  ✕</button>
+            {% endif %}
+            {% if system_type_filter %}
+                <button type="button" class="btn btn-outline-secondary" onClick="clearField('system_type')">System Type | {{system_type_filter.name}}  ✕</button>
+            {% endif %}
+            <script>
+                function clearField(field){
+                    document.getElementById(field).value='';
+                    document.getElementById('filters').submit();
+                }
+            </script>
+        </div>
         <div id ="table-container" class="d-flex flex-fill">
             <table id = "register-table" class="table table-striped table-sm table-hover">
                 <thead id = "sticky-head">
                     <tr>
                         <th id = "sticky-col">System ID - Name</th>
-                        <th>Status</th>
-                        <th>Division</th>
+                        <th>
+                            Status
+                            <select id="status" name="status" form="filters" onchange="this.form.submit()">
+                                <option></option>
+                                {% for option in statuses%}
+                                    {% if option.id == status_filter.id %}
+                                        <option selected="selected" value = {{option.id}}>{{option.name}}</option>
+                                    {% else %}
+                                        <option value = {{option.id}}>{{option.name}}</option>
+                                    {% endif %}
+                                {% endfor%}
+                            </select>
+                        </th>
+                        <th>Division
+                            <select id="division" name="division" form="filters" onchange="this.form.submit()">
+                                <option></option>
+                                {% for option in divisions%}
+                                    {% if option.id == division_filter.id %}
+                                        <option selected="selected" value = {{option.id}}>{{option.name}}</option>
+                                    {% else %}
+                                        <option value = {{option.id}}>{{option.name}}</option>
+                                    {% endif %}
+                                {% endfor%}
+                            </select>
+                        </th>
                         <th>Business Service Owner</th>
                         <th>System Owner</th>
                         <th>Technical Custodian</th>
                         <th>Information Custodian</th>
-                        <th>Seasonality</th>
-                        <th>Availability</th>
+                        <th>Seasonality
+                            <select id="seasonality" name="seasonality" form="filters" onchange="this.form.submit()">
+                                <option></option>
+                                {% for option in seasonalities%}
+                                    {% if option.id == seasonality_filter.id %}
+                                        <option selected="selected" value = {{option.id}}>{{option.name}}</option>
+                                    {% else %}
+                                        <option value = {{option.id}}>{{option.name}}</option>
+                                    {% endif %}
+                                {% endfor%}
+                            </select>
+                        </th>
+                        <th>Availability
+                            <select id="availability" name="availability" form="filters" onchange="this.form.submit()">
+                                <option></option>
+                                {% for option in availabilities%}
+                                    {% if option.id == availability_filter.id %}
+                                        <option selected="selected" value = {{option.id}}>{{option.name}}</option>
+                                    {% else %}
+                                        <option value = {{option.id}}>{{option.name}}</option>
+                                    {% endif %}
+                                {% endfor%}
+                            </select>
+                        </th>
                         <th>Link</th>
                         <th>Description</th>
                         <th>File Store Link</th>
-                        <th>Vital Records</th>
+                        <th>Vital Records
+                            <select id="vital_records" name="vital_records" form="filters" onchange="this.form.submit()">
+                                <option></option>
+                                {% if vital_records_filter == "True" %}
+                                    <option selected="selected">True</option>
+                                    <option>False</option>
+                                {% elif vital_records_filter == "False" %}
+                                    <option selected="selected">True</option>
+                                    <option>False</option>
+                                {% else %}
+                                    <option>True</option>
+                                    <option>False</option>
+                                {% endif%}
+                            </select>
+                        </th>
                         <th>Disposal Authority</th>
                         <th>Retention and Disposal</th>
                         <th>UBCS</th>
-                        <th>Sensitivity</th>
-                        <th>System Type</th>
+                        <th>Sensitivity
+                            <select id="sensitivity" name="sensitivity" form="filters" onchange="this.form.submit()">
+                                <option></option>
+                                {% for option in sensitivities%}
+                                    {% if option.id == sensitivity_filter.id %}
+                                        <option selected="selected" value = {{option.id}}>{{option.name}}</option>
+                                    {% else %}
+                                        <option value = {{option.id}}>{{option.name}}</option>
+                                    {% endif %}
+                                {% endfor%}
+                            </select>
+                        </th>
+                        <th>System Type
+                            <select id="system_type" name="system_type" form="filters" onchange="this.form.submit()">
+                                <option></option>
+                                {% for option in system_types%}
+                                    {% if option.id == system_type_filter.id %}
+                                        <option selected="selected" value = {{option.id}}>{{option.name}}</option>
+                                    {% else %}
+                                        <option value = {{option.id}}>{{option.name}}</option>
+                                    {% endif %}
+                                {% endfor%}
+                            </select>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>

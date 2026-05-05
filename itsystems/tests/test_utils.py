@@ -9,7 +9,7 @@ from django.contrib.auth.models import User
 from .test_model import create_random_record
 from itsystems.models import ITSystemRecord
 from itsystems.utils import __validate_csv as validate
-from itsystems.utils import ExportCSV, ImportCSV
+from itsystems.utils import export_csv, import_csv
 
 
 class UtilsTests(TestCase):
@@ -65,7 +65,7 @@ class UtilsTests(TestCase):
         Tests that all records exported by export_csv() accurately reflect existing records in the database.
         """
         faux_response = HttpResponse()
-        ExportCSV(faux_response) 
+        export_csv(faux_response) 
         raw_text = faux_response.content
         record_list = list(csv.DictReader(io.StringIO(raw_text.decode(encoding='utf-8', errors='replace'))))
 
@@ -92,7 +92,7 @@ class UtilsTests(TestCase):
         faux_user = User.objects.create_user(username="testuser", email="user@dbca.wa.gov.au.com", password="pass")
 
         # Validates that identical values do not trigger an update, deletion, or failure        
-        results = ImportCSV(get_faux_post(faux_user))
+        results = import_csv(get_faux_post(faux_user))
         original_size = len(ITSystemRecord.objects.all())
         self.assertEqual(len(results['created']), 0)
         self.assertEqual(len(results['updated']), 0)
@@ -109,7 +109,7 @@ class UtilsTests(TestCase):
         record.description = old_description
         record.save()
         original_size = len(ITSystemRecord.objects.all())
-        results = ImportCSV(original_db)
+        results = import_csv(original_db)
         self.assertEqual(len(results['created']), 1)
         self.assertEqual(len(results['updated']), 1)
         self.assertEqual(results['updated'][0]['changes'][0]['field'],'description')
@@ -128,7 +128,7 @@ class UtilsTests(TestCase):
         record.save()
         original_db.__delattr__('user')
         original_size = len(ITSystemRecord.objects.all())
-        results = ImportCSV(original_db)
+        results = import_csv(original_db)
         self.assertEqual(len(results['created']), 0)
         self.assertEqual(len(results['updated']), 0)
         self.assertEqual(len(results['failed']), 2)     
@@ -143,6 +143,6 @@ def get_field_names(field_list):
 
 def get_faux_post(user):
     faux_response = HttpResponse()
-    ExportCSV(faux_response) 
+    export_csv(faux_response) 
     faux_file = UtilsTests.FauxCSVFile(name='test.csv', is_multiple_chunks=False, raw_text=faux_response.content.decode(encoding='utf-8', errors='replace'))
     return UtilsTests.FauxPOST(faux_file, user)
