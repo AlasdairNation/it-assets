@@ -258,7 +258,11 @@ LOGGING = {
             "handlers": ["console"],
             "level": "DEBUG" if DEBUG else "INFO",
         },
-        "itassets": {"handlers": ["console"], "level": "INFO"},
+        "itassets": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
         # Microsoft Authentication Libraries logging.
         "msal": {
             "handlers": ["console"],
