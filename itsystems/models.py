@@ -233,14 +233,10 @@ class ITSystemRecord(models.Model):
             self_fields = self.__dict__
             obj_fields = obj.__dict__
             for self_val, obj_val in self_fields.items():
-                if self_val not in excluded_fields:
-                    try:
-                        #  obj_fileds' 'Or None' accounts for empty string values, self fields' 'Or None' allows for Boolean 'False' equivalency
-                        if (self_fields[self_val] or None) != (obj_fields[self_val] or None):
-                            changes.append({"field": self.__strip_field__(str(self_val)),"verbose_field": self.__display_field__(str(self_val)),  "old":self.__display_val__(self_val,self_fields[self_val]), "new": obj.__display_val__(self_val, obj_fields[self_val])})
-                    except KeyError as e:
-                        print("couldn't find " + self_val)
-                        print(e)
+                if (self_val not in excluded_fields) and (self_val in self_fields) and (self_val in obj_fields):
+                    #  obj_fileds' 'Or None' accounts for empty string values, self fields' 'Or None' allows for Boolean 'False' equivalency
+                    if (self_fields[self_val] or None) != (obj_fields[self_val] or None):
+                        changes.append({"field": self.__strip_field__(str(self_val)),"verbose_field": self.__display_field__(str(self_val)),  "old":self.__display_val__(self_val,self_fields[self_val]), "new": obj.__display_val__(self_val, obj_fields[self_val])})
         else:
             self_fields = self.__dict__
             for self_val in self_fields.items():
