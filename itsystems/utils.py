@@ -3,11 +3,12 @@ import io
 import reversion
 from .models import ITSystemRecord
 
+
 def export_csv(response):
     """
     Exports the IT Systems Register to a csv, writing it into a HttpResponse object passed to it.
     """
-    writer=csv.writer(response)
+    writer = csv.writer(response)
     headers = [field.name for field in __get_model_fields()]
     writer.writerow(headers)
 
@@ -32,31 +33,32 @@ def export_csv(response):
             record.retention_and_disposal,
             record.ubcs,
             record.sensitivity.name if record.sensitivity else "",
-            record.system_type.name if record.system_type else ""
+            record.system_type.name if record.system_type else "",
         ]
         writer.writerow(record_vals)
+
 
 def import_csv(request):
     """
     Updates the IT System Register database from a csv contained within an Http Post Request.
     This function returns a dictionary containing the validation results and 3 lists respectively containing details of records created, records updated, and records that failed to process.
     """
-    csv_file = request.FILES['csv_file']
+    csv_file = request.FILES["csv_file"]
     update_list = []
     create_list = []
     failed_list = []
 
     validate_results = __validate_csv(csv_file)
-    if validate_results['valid']:
-        raw_text = validate_results['raw_text']
+    if validate_results["valid"]:
+        raw_text = validate_results["raw_text"]
         record_list = list(csv.DictReader(io.StringIO(raw_text)))
         for record in record_list:
             # Search for existing record in database
             try:
-                found_record = ITSystemRecord.objects.get(system_id=record['system_id'])
-            except ITSystemRecord.DoesNotExist as e: 
+                found_record = ITSystemRecord.objects.get(system_id=record["system_id"])
+            except ITSystemRecord.DoesNotExist:
                 found_record = None
-        
+
             try:
                 # Populate new record with data
                 new_record = ITSystemRecord()
@@ -64,7 +66,7 @@ def import_csv(request):
 
                 if found_record:
                     changes = found_record.compare(new_record)
-                    if len(changes)>0:
+                    if len(changes) > 0:
                         with reversion.create_revision():
                             # Update Record
                             found_record.set_from_dict(record)
@@ -74,14 +76,14 @@ def import_csv(request):
                             # Create comment for version history
                             change_log = "Changed via CSV: "
                             for change in changes:
-                                change_log += change['verbose_field'] + ', '
+                                change_log += change["verbose_field"] + ", "
                             comment = change_log[:-2] + "."
 
                             # Create version history entry
                             reversion.set_user(request.user)
                             reversion.set_comment(comment)
 
-                        update_list.append({"record":found_record.system_id_name, "changes":changes})
+                        update_list.append({"record": found_record.system_id_name, "changes": changes})
                 elif not found_record:
                     with reversion.create_revision():
                         # Create Record
@@ -93,18 +95,26 @@ def import_csv(request):
                         reversion.set_user(request.user)
                         reversion.set_comment("Created via CSV import.")
                     changes = new_record.compare(None)
-                    create_list.append({"record":new_record.system_id_name, "changes":changes})
+                    create_list.append({"record": new_record.system_id_name, "changes": changes})
             except Exception as e:
-                if hasattr(e, 'message'):
+                if hasattr(e, "message"):
                     error_message = e.message
                 else:
                     error_message = str(e)
-                failed_list.append({"record":record['system_id'], "changes": error_message})
+                failed_list.append({"record": record["system_id"], "changes": error_message})
 
-    return {'validation':{'valid':validate_results['valid'], 'message':validate_results['message']},'created':create_list,'updated':update_list, 'failed':failed_list}
+    return {
+        "validation": {"valid": validate_results["valid"], "message": validate_results["message"]},
+        "created": create_list,
+        "updated": update_list,
+        "failed": failed_list,
+    }
 
 
 def retrieve(cls, id):
+    """
+    Retrieves a record using an Id from an inputted class.
+    """
     try:
         model = cls.objects.get(id=id)
     except Exception:
@@ -124,7 +134,7 @@ def __validate_csv(csv_file):
     if csv_file.name.endswith(".csv"):
         # Checks that file isn't chunked / over 2 mb
         if not csv_file.multiple_chunks():
-            raw_text = csv_file.read().decode(encoding='utf-8', errors='replace')
+            raw_text = csv_file.read().decode(encoding="utf-8", errors="replace")
             csv_headers = raw_text.splitlines()[0].split(",")
             model_fields = __get_model_fields()
             # Checks that csv has the correct headers
@@ -137,7 +147,8 @@ def __validate_csv(csv_file):
             msg = "File size is too large (>2MB)."
     else:
         msg = "The selected file isn't a CSV"
-    return {"valid":valid, "message":msg, "raw_text":raw_text}
+    return {"valid": valid, "message": msg, "raw_text": raw_text}
+
 
 def __get_model_fields():
     """

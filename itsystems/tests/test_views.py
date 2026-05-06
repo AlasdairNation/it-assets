@@ -3,6 +3,7 @@ from django.urls import reverse
 from itassets.test_api import ApiTestCase
 from .test_model import create_random_record
 
+
 class ViewsTestCase(ApiTestCase):
     def test_it_systems_register_empty(self):
         """
@@ -12,7 +13,7 @@ class ViewsTestCase(ApiTestCase):
         url = reverse("it_systems_register")
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp,"No results found")
+        self.assertContains(resp, "No results found")
 
     def test_it_systems_register_populated(self):
         """
@@ -28,9 +29,9 @@ class ViewsTestCase(ApiTestCase):
         url = reverse("it_systems_register")
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp,record1.system_id)
-        self.assertContains(resp,record2.system_id)
-        self.assertNotContains(resp,"No results found")
+        self.assertContains(resp, record1.system_id)
+        self.assertContains(resp, record2.system_id)
+        self.assertNotContains(resp, "No results found")
 
     def test_it_systems_register_filtering(self):
         """
@@ -44,34 +45,56 @@ class ViewsTestCase(ApiTestCase):
         record2.save()
 
         # Tests Search
-        url = reverse("it_systems_register") + "?q=" + str(record1.system_id) + "&status=&division=&seasonality=&availability=&vital_records=&sensitivity=&system_type"
+        url = (
+            reverse("it_systems_register")
+            + "?q="
+            + str(record1.system_id)
+            + "&status=&division=&seasonality=&availability=&vital_records=&sensitivity=&system_type"
+        )
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp,record1.system_id)
-        self.assertNotContains(resp,record2.system_id)
+        self.assertContains(resp, record1.system_id)
+        self.assertNotContains(resp, record2.system_id)
 
         # Tests fk choice field filtering
-        url = reverse("it_systems_register") + "?q=&status=&division=" + str(record2.division.id) + "&seasonality=&availability=&vital_records=&sensitivity=&system_type"
+        url = (
+            reverse("it_systems_register")
+            + "?q=&status=&division="
+            + str(record2.division.id)
+            + "&seasonality=&availability=&vital_records=&sensitivity=&system_type"
+        )
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
-        self.assertNotContains(resp,record1.system_id)
-        self.assertContains(resp,record2.system_id)
+        self.assertNotContains(resp, record1.system_id)
+        self.assertContains(resp, record2.system_id)
 
         # Tests boolean choice field filtering
-        record1.vital_records=True
-        record2.vital_records=False
+        record1.vital_records = True
+        record2.vital_records = False
         record1.save()
         record2.save()
-        url = reverse("it_systems_register") + "?q=&status=&division=&seasonality=&availability=&vital_records=" + str(record1.vital_records) + "&sensitivity=&system_type"
+        url = (
+            reverse("it_systems_register")
+            + "?q=&status=&division=&seasonality=&availability=&vital_records="
+            + str(record1.vital_records)
+            + "&sensitivity=&system_type"
+        )
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp,record1.system_id)
-        self.assertNotContains(resp,record2.system_id)
+        self.assertContains(resp, record1.system_id)
+        self.assertNotContains(resp, record2.system_id)
 
         # Tests failure to find from mismatch
-        url = reverse("it_systems_register") + "?q=" + str(record2.name) +"&status=&division=&seasonality=&availability=&vital_records=" + str(record1.vital_records) + "&sensitivity=&system_type"
+        url = (
+            reverse("it_systems_register")
+            + "?q="
+            + str(record2.name)
+            + "&status=&division=&seasonality=&availability=&vital_records="
+            + str(record1.vital_records)
+            + "&sensitivity=&system_type"
+        )
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp,"No results found")
-        self.assertNotContains(resp,record1.system_id)
-        self.assertNotContains(resp,record2.system_id)
+        self.assertContains(resp, "No results found")
+        self.assertNotContains(resp, record1.system_id)
+        self.assertNotContains(resp, record2.system_id)

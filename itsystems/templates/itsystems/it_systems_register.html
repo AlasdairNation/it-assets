@@ -1,7 +1,7 @@
 {% extends "base_itassets.html" %}
 {% load static %}
-{% block page_content %}
-<head>
+{% block extra_style %}
+    {{ block.super }}
     <style>
         #parent-container{
             max-height: calc(100dvh - 120px);
@@ -49,8 +49,9 @@
             z-index:2;
         }
     </style>
-</head>
-<body>
+{% endblock extra_style %}
+
+{% block page_content %}
     <div id = "parent-container" class="d-flex flex-column container-fluid p-5">
         <div id="page-headers">
             <div class="row">
@@ -181,8 +182,8 @@
                                     <option selected="selected">True</option>
                                     <option>False</option>
                                 {% elif vital_records_filter == "False" %}
-                                    <option selected="selected">True</option>
-                                    <option>False</option>
+                                    <option>True</option>
+                                    <option selected="selected">False</option>
                                 {% else %}
                                     <option>True</option>
                                     <option>False</option>
@@ -308,5 +309,4 @@
             </div>
         {% endif %}
     </div>
-<body>
 {% endblock page_content %}

@@ -7,6 +7,7 @@ from itassets.test_api import ApiTestCase
 
 User = get_user_model()
 
+
 class ITSystemRecordAdminTestCase(ApiTestCase):
     def setUp(self):
         super(ITSystemRecordAdminTestCase, self).setUp()
