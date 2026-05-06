@@ -70,7 +70,6 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         if self.request.GET.get("seasonality"):
             queryset = queryset.filter(seasonality__id=self.request.GET["seasonality"])
         if self.request.GET.get("vital_records"):
-             print(self.request.GET.get("vital_records"))
              queryset = queryset.filter(vital_records=((self.request.GET["vital_records"]=="True")))
         if self.request.GET.get("sensitivity"):
             queryset = queryset.filter(sensitivity__id=self.request.GET["sensitivity"])  
