@@ -1,5 +1,4 @@
 from django.urls import reverse
-from unittest import skip
 
 from itassets.test_api import ApiTestCase
 from .test_model import create_random_record
