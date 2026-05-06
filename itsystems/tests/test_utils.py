@@ -5,7 +5,6 @@ from django.test import TestCase
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 
-
 from .test_model import create_random_record
 from itsystems.models import ITSystemRecord
 from itsystems.utils import __validate_csv as validate
@@ -82,7 +81,6 @@ class UtilsTests(TestCase):
                 new_record = ITSystemRecord()
                 new_record.set_from_dict(record)
                 changes = found_record.compare(new_record)
-                print(changes)
                 self.assertIs(len(changes),0)        
 
     def test_import_csv(self):
