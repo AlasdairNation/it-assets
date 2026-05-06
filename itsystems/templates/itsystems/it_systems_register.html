@@ -76,12 +76,12 @@
                         </div>
                     </form>
                 </div>
-                {% if object_list %}
+                {% comment %} {% if object_list %} {% endcomment %}
                     <!-- Pagination -->
                     <div class="col">
                         <div class="d-flex justify-content-end">{% include "pagination.html" %}</div>
                     </div>
-                {% endif %}
+                {% comment %} {% endif %} {% endcomment %}
             </div>
         </div>
         <div style="padding:10px">
@@ -299,6 +299,14 @@
                 </tbody>
             </table>
         </div>
+        {% if object_count == 0 %}
+            <div class="d-flex col pt-5 justify-content-center">
+                <div class="d-flex row pt-5 align-items-center">
+                    <h2 class="text-center text-secondary">No results found</h2>
+                    <p class="text-center text-secondary">Check your search spelling or try different filters</p>
+                </div>
+            </div>
+        {% endif %}
     </div>
 <body>
 {% endblock page_content %}
