@@ -156,11 +156,10 @@ class ITSystemRecordAPIResource(View):
             )
 
             # Queryset filtering.
-            if "system_id" in kwargs and kwargs["system_id"]:  # Allow filtering by object system_id.
+            if "system_id" in kwargs and kwargs["system_id"]:
                 queryset = queryset.filter(system_id=kwargs["system_id"])
 
-            else:  # Normal API response.
-                register = [record.to_dict() for record in queryset]
+            register = [record.to_dict() for record in queryset]
 
             response = JsonResponse(register, safe=False)
 
