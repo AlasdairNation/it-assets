@@ -337,6 +337,29 @@ class ITSystemRecord(models.Model):
 
         return force_failures
 
+    def to_dict(self):
+        return {
+                "system_id": self.system_id,
+                "name": self.name,
+                "status": self.status.name if self.status else None,
+                "division": self.division.name if self.division else None,
+                "business_service_owner": self.business_service_owner.email if self.business_service_owner else None,
+                "system_owner": self.system_owner.email if self.system_owner else None,
+                "technology_custodian": self.technology_custodian.email if self.technology_custodian else None,
+                "information_custodian": self.information_custodian.email if self.information_custodian else None,
+                "sensitivity": self.sensitivity.name if self.sensitivity else None,
+                "availability": self.availability.name if self.availability else None,
+                "link": self.link,
+                "description": self.description,
+                "file_store_link": self.file_store_link,
+                "vital_records": self.vital_records,
+                "disposal_authority": self.disposal_authority,
+                "retention_and_disposal": self.retention_and_disposal,
+                "ubcs":self.ubcs,
+                "sensitivity": self.sensitivity.name if self.sensitivity else None,
+                "system_type": self.system_type.name if self.system_type else None
+            }
+
     def __str__(self):
         """
         Overrides the default __str__ method.

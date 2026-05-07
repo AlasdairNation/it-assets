@@ -2,6 +2,7 @@ import csv
 import io
 import reversion
 from .models import ITSystemRecord
+from .models import DepartmentUser
 
 
 def export_csv(response):
@@ -127,6 +128,44 @@ def retrieve(cls, id):
     except Exception:
         model = None
     return model
+
+
+def replace_contact(old_contact,new_contact):
+    records = ITSystemRecord.objects.all()
+    changes = []
+
+    try:
+        old_contact_fk = DepartmentUser.objects.get(email=old_contact)
+    except DepartmentUser.DoesNotExist:
+        old_contact_fk = None
+    try:
+        new_contact_fk = DepartmentUser.objects.get(email=new_contact)
+    except DepartmentUser.DoesNotExist:
+        old_contact_fk = None
+    
+    if old_contact_fk and new_contact_fk:
+        for record in records:
+            record_changes = []
+            if record.business_service_owner == old_contact_fk:
+                record.business_service_owner = new_contact_fk
+                record_changes.append({"business_service_owner"})
+            if record.system_owner == old_contact_fk:
+                record.system_owner = new_contact_fk
+                record_changes.append({"system_owner"})               
+            if record.technology_custodian == old_contact_fk:
+                record.technology_custodian = new_contact_fk
+                record_changes.append({"technology_custodian"})
+            if record.information_custodian == old_contact_fk:
+                record.information_custodian = new_contact_fk
+                record_changes.append({"information_custodian"})
+            
+            if len(record_changes)>0:
+                try:
+                    record.save()
+                    changes.append({'record':record.system_id,'success':True, 'changes':changes})
+                except Exception as e:
+                    changes.append({'record':record.system_id,'success':False, 'changes':str(e)})
+    return changes
 
 
 def __validate_csv(csv_file):

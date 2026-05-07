@@ -9,11 +9,12 @@ from django.conf import settings
 from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_control
+from django.core.exceptions import ObjectDoesNotExist
 
 from itassets.utils import get_next_pages, get_previous_pages
 
 from .models import ITSystemRecord, Status, Division, Seasonality, Availability, Sensitivity, SystemType
-from .utils import export_csv, import_csv, retrieve
+from .utils import export_csv, import_csv, retrieve, replace_contact
 
 
 class ITSystemsRegister(LoginRequiredMixin, ListView):
@@ -159,30 +160,7 @@ class ITSystemRecordAPIResource(View):
                 queryset = queryset.filter(system_id=kwargs["system_id"])
 
             else:  # Normal API response.
-                register = [
-                    {
-                        "system_id": record.system_id,
-                        "name": record.name,
-                        "status": record.status.name if record.status else None,
-                        "division": record.division.name if record.division else None,
-                        "business_service_owner": record.business_service_owner.email if record.business_service_owner else None,
-                        "system_owner": record.system_owner.email if record.system_owner else None,
-                        "technology_custodian": record.technology_custodian.email if record.technology_custodian else None,
-                        "information_custodian": record.information_custodian.email if record.information_custodian else None,
-                        "sensitivity": record.sensitivity.name if record.sensitivity else None,
-                        "availability": record.availability.name if record.availability else None,
-                        "link": record.link,
-                        "description": record.description,
-                        "file_store_link": record.file_store_link,
-                        "vital_records": record.vital_records,
-                        "disposal_authority": record.disposal_authority,
-                        "retention_and_disposal": record.retention_and_disposal,
-                        "ubcs":record.ubcs,
-                        "sensitivity": record.sensitivity.name if record.sensitivity else None,
-                        "system_type": record.system_type.name if record.system_type else None
-                    }
-                    for record in queryset
-                ]
+                register = [record.to_dict() for record in queryset]
 
             response = JsonResponse(register, safe=False)
 
@@ -202,15 +180,27 @@ class ITSystemRecordAPIResource(View):
         if "system_id" in kwargs and kwargs["system_id"]:  # Allow filtering by object system_id.
             system_id = system_id=kwargs["system_id"]
             try:
-                system = ITSystemRecord.objects.get(system_id=system_id)
+                old_record = ITSystemRecord.objects.get(system_id=system_id)
                 data = json.loads(request.POST)
+                force = data.get('force')==True
+                new_record = data.get('record')
+                old_record.set_from_dict(dict=new_record, plain_text=True, force=force)
+                old_record.save()
+                response = JsonResponse(dict=old_record.to_dict(), save=False)
                 
             except ITSystemRecord.DoesNotExist:
                 response = HttpResponseBadRequest("Can't find system " + system_id)
             except json.JSONDecodeError:
                 response = HttpResponseBadRequest("JSON data is invalid")
+            except ObjectDoesNotExist as e:
+                response = HttpResponseBadRequest("Failed to update system " + system_id + " : " + str(e))
+            except Exception as e:
+                response = HttpResponseBadRequest("Unexpected error: " + str(e))
+                
+        elif ("old_contact" in kwargs and kwargs["old_contact"]) and ("new_contact" in kwargs and kwargs["new_contact"]):
+            changes = replace_contact(old_contact=kwargs["old_contact"], new_contact=kwargs["new_contact"])
+            response = JsonResponse(changes, safe=False)
         else:
-            pass
-        
+            response = HttpResponseBadRequest("Invalid request, please specify 'old_contact' and 'new_contact'")
         return response
             
