@@ -1,10 +1,14 @@
+import json
 from datetime import date, datetime
 
 from django.shortcuts import render
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import ListView, View
-from django.http import HttpResponse
 from django.db.models import Q
+from django.conf import settings
+from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_control
 
 from itassets.utils import get_next_pages, get_previous_pages
 
@@ -128,3 +132,85 @@ class ImportRegisterChangesFromCSV(LoginRequiredMixin, PermissionRequiredMixin, 
             # Displays error message
             response = render(request, "admin/itsystems/itsystemrecord/upload_csv.html", context=results["validation"])
         return response
+    
+
+class ITSystemRecordAPIResource(View):
+    """An API view that returns JSON of the IT System Register"""
+
+    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
+    def get(self, request, *args, **kwargs):
+        response = None
+        try:
+            queryset = (
+                ITSystemRecord.objects.all()
+                .select_related(
+                    "status",
+                    "division",
+                    "seasonality",
+                    "availability",
+                    "sensitivity",
+                    "system_type"
+                )
+                .order_by("system_id")
+            )
+
+            # Queryset filtering.
+            if "system_id" in kwargs and kwargs["system_id"]:  # Allow filtering by object system_id.
+                queryset = queryset.filter(system_id=kwargs["system_id"])
+
+            else:  # Normal API response.
+                register = [
+                    {
+                        "system_id": record.system_id,
+                        "name": record.name,
+                        "status": record.status.name if record.status else None,
+                        "division": record.division.name if record.division else None,
+                        "business_service_owner": record.business_service_owner.email if record.business_service_owner else None,
+                        "system_owner": record.system_owner.email if record.system_owner else None,
+                        "technology_custodian": record.technology_custodian.email if record.technology_custodian else None,
+                        "information_custodian": record.information_custodian.email if record.information_custodian else None,
+                        "sensitivity": record.sensitivity.name if record.sensitivity else None,
+                        "availability": record.availability.name if record.availability else None,
+                        "link": record.link,
+                        "description": record.description,
+                        "file_store_link": record.file_store_link,
+                        "vital_records": record.vital_records,
+                        "disposal_authority": record.disposal_authority,
+                        "retention_and_disposal": record.retention_and_disposal,
+                        "ubcs":record.ubcs,
+                        "sensitivity": record.sensitivity.name if record.sensitivity else None,
+                        "system_type": record.system_type.name if record.system_type else None
+                    }
+                    for record in queryset
+                ]
+
+            response = JsonResponse(register, safe=False)
+
+        except UnboundLocalError as e:
+            if "system_id" in kwargs and kwargs["system_id"]:
+                response = HttpResponseBadRequest("Can't find system " + kwargs["system_id"] + ": " + str(e))
+            else:
+                response = HttpResponseBadRequest(str(e))
+        return response
+    
+    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
+    def post(self, request, *args, **kwargs):
+        """An API view that allows users to update a record or a contact"""
+
+        response = None
+
+        if "system_id" in kwargs and kwargs["system_id"]:  # Allow filtering by object system_id.
+            system_id = system_id=kwargs["system_id"]
+            try:
+                system = ITSystemRecord.objects.get(system_id=system_id)
+                data = json.loads(request.POST)
+                
+            except ITSystemRecord.DoesNotExist:
+                response = HttpResponseBadRequest("Can't find system " + system_id)
+            except json.JSONDecodeError:
+                response = HttpResponseBadRequest("JSON data is invalid")
+        else:
+            pass
+        
+        return response
+            

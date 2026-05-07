@@ -12,6 +12,10 @@
                 <label for="csv_file">Select a CSV:</label>
                 <br>
                 <input type="file" name="csv_file" id="csv_file" accept=".csv" required class="form-control">
+                <br>
+                <input type="hidden" name="force" value="False">
+                <input type="checkbox" name="force" value="True">
+                <label for="force"><small> Ignore errors?</small></label>
             </div>                   
             <div>
                 {% if message %}

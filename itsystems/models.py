@@ -293,11 +293,13 @@ class ITSystemRecord(models.Model):
 
         super(ITSystemRecord, self).save(*args, **kwargs)
 
-    def set_from_dict(self, dict, plain_text=True):
+    def set_from_dict(self, dict, plain_text=True, force=False):
         """
         Sets field values from inputted dictionary object.
         If plain_text is false, data with fk values is interpreted literally instead of as plain text
         """
+        force_failures = []
+
         self.system_id = dict.get("system_id")
         self.name = dict.get("name")
         self.description = dict.get("description")
@@ -307,16 +309,16 @@ class ITSystemRecord(models.Model):
         self.retention_and_disposal = dict.get("retention_and_disposal")
         self.ubcs = dict.get("ubcs")
         if plain_text:
-            self.division = self.__get_choice_fk(dict.get("division"), Division)
-            self.status = self.__get_choice_fk(dict.get("status"), Status)
-            self.seasonality = self.__get_choice_fk(dict.get("seasonality"), Seasonality)
-            self.availability = self.__get_choice_fk(dict.get("availability"), Availability)
-            self.system_owner = self.__get_user_fk(dict.get("system_owner"), "system_owner")
-            self.technology_custodian = self.__get_user_fk(dict.get("technology_custodian"), "technology_custodian")
-            self.information_custodian = self.__get_user_fk(dict.get("information_custodian"), "information_custodian")
-            self.business_service_owner = self.__get_user_fk(dict.get("business_service_owner"), "business_service_owner")
-            self.sensitivity = self.__get_choice_fk(dict.get("sensitivity"), Sensitivity)
-            self.system_type = self.__get_choice_fk(dict.get("system_type"), SystemType)
+            self.division = self.__get_choice_fk(dict.get("division"), Division, force, force_failures)
+            self.status = self.__get_choice_fk(dict.get("status"), Status, force, force_failures)
+            self.seasonality = self.__get_choice_fk(dict.get("seasonality"), Seasonality, force, force_failures)
+            self.availability = self.__get_choice_fk(dict.get("availability"), Availability, force, force_failures)
+            self.system_owner = self.__get_user_fk(dict.get("system_owner"), "system_owner", force, force_failures)
+            self.technology_custodian = self.__get_user_fk(dict.get("technology_custodian"), "technology_custodian", force, force_failures)
+            self.information_custodian = self.__get_user_fk(dict.get("information_custodian"), "information_custodian", force, force_failures)
+            self.business_service_owner = self.__get_user_fk(dict.get("business_service_owner"), "business_service_owner", force, force_failures)
+            self.sensitivity = self.__get_choice_fk(dict.get("sensitivity"), Sensitivity, force, force_failures)
+            self.system_type = self.__get_choice_fk(dict.get("system_type"), SystemType, force, force_failures)
             vital_records = str(dict.get("vital_records"))
             if vital_records:
                 self.vital_records = vital_records.strip().lower() == "true"
@@ -332,6 +334,8 @@ class ITSystemRecord(models.Model):
             self.sensitivity = Sensitivity.objects.get(pk=dict.get("sensitivity_id"))
             self.system_type = SystemType.objects.get(pk=dict.get("system_type_id"))
             self.vital_records = dict.get("vital_records")
+
+        return force_failures
 
     def __str__(self):
         """
@@ -364,7 +368,7 @@ class ITSystemRecord(models.Model):
         """
         return self._meta.get_field(self.__strip_field__(field)).verbose_name
 
-    def __get_choice_fk(self, text, ChoiceClass):
+    def __get_choice_fk(self, text, ChoiceClass, force=False, force_failures=[]):
         """
         Retrieves a division id from the inputted text value.
         """
@@ -373,10 +377,14 @@ class ITSystemRecord(models.Model):
             if text:
                 fk = ChoiceClass.objects.get(name=text)
         except Exception:
-            raise Exception(str(ChoiceClass._meta.verbose_name) + ": Can't find option '" + text + "'.")
+            message = str(ChoiceClass._meta.verbose_name) + ": Can't find option '" + text + "'."
+            if force:
+                force_failures.append(message)
+            else:
+                raise ChoiceClass.DoesNotExist(message)
         return fk
 
-    def __get_user_fk(self, email, field):
+    def __get_user_fk(self, email, field, force=False, force_failures=[]):
         """
         Retrieves a user id from an inputted email or display name.
         """
@@ -393,7 +401,10 @@ class ITSystemRecord(models.Model):
             if email_query:
                 user = DepartmentUser.objects.get(email=email_query)
         except Exception:
-            if email:
-                raise Exception(field + ": Can't find user '" + email + "'.")
+            message = field + ": Can't find user '" + email + "'."
+            if email and force:
+                force_failures.append(message)
+            elif email and not force:
+                raise DepartmentUser.DoesNotExist(message)
             user = None
         return user

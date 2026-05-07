@@ -44,6 +44,7 @@ def import_csv(request):
     This function returns a dictionary containing the validation results and 3 lists respectively containing details of records created, records updated, and records that failed to process.
     """
     csv_file = request.FILES["csv_file"]
+    force = request.POST["force"]=="True"
     update_list = []
     create_list = []
     failed_list = []
@@ -53,23 +54,24 @@ def import_csv(request):
         raw_text = validate_results["raw_text"]
         record_list = list(csv.DictReader(io.StringIO(raw_text)))
         for record in record_list:
+            force_failures = []
             # Search for existing record in database
             try:
                 found_record = ITSystemRecord.objects.get(system_id=record["system_id"])
             except ITSystemRecord.DoesNotExist:
-                found_record = None
+                found_record = None 
 
             try:
                 # Populate new record with data
                 new_record = ITSystemRecord()
-                new_record.set_from_dict(record)
+                force_failures = new_record.set_from_dict(dict=record, plain_text=True, force=force)
 
                 if found_record:
                     changes = found_record.compare(new_record)
                     if len(changes) > 0:
                         with reversion.create_revision():
                             # Update Record
-                            found_record.set_from_dict(record)
+                            force_failures = found_record.set_from_dict(dict=record, plain_text=True, force=force)
                             found_record.modified_by = request.user.email
                             found_record.save()
 
@@ -96,6 +98,11 @@ def import_csv(request):
                         reversion.set_comment("Created via CSV import.")
                     changes = new_record.compare(None)
                     create_list.append({"record": new_record.system_id_name, "changes": changes})
+                
+                if len(force_failures)>0:
+                    error_message = "Partial Failure(s): " + "\r\n".join(force_failures)
+                    failed_list.append({"record": record["system_id"], "changes": error_message})
+
             except Exception as e:
                 if hasattr(e, "message"):
                     error_message = e.message
