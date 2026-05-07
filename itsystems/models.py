@@ -2,10 +2,12 @@ from django.db import models
 
 from organisation.models import DepartmentUser
 
+
 class Division(models.Model):
     """
     Represents a division within DBCA.
     """
+
     class Meta:
         verbose_name = "Division"
         verbose_name_plural = "Divisions"
@@ -15,10 +17,12 @@ class Division(models.Model):
     def __str__(self):
         return self.name
 
+
 class Status(models.Model):
     """
     Represents the status of a IT System.
     """
+
     class Meta:
         verbose_name = "Status"
         verbose_name_plural = "Statuses"
@@ -27,15 +31,17 @@ class Status(models.Model):
 
     @classmethod
     def get_default_pk(cls):
-        return Status.objects.get_or_create(name='Production')[0].pk
+        return Status.objects.get_or_create(name="Production")[0].pk
 
     def __str__(self):
         return self.name
+
 
 class Seasonality(models.Model):
     """
     Represents the seasonality of an IT System within DBCA.
     """
+
     class Meta:
         verbose_name = "Seasonality"
         verbose_name_plural = "Seasonalities"
@@ -44,15 +50,17 @@ class Seasonality(models.Model):
 
     @classmethod
     def get_default_pk(cls):
-        return Seasonality.objects.get_or_create(name='Default')[0].pk
+        return Seasonality.objects.get_or_create(name="Default")[0].pk
 
     def __str__(self):
         return self.name
-    
+
+
 class Availability(models.Model):
     """
     Represents the availability of an IT System within DBCA.
     """
+
     class Meta:
         verbose_name = "Availability"
         verbose_name_plural = "Availabilities"
@@ -61,14 +69,17 @@ class Availability(models.Model):
 
     @classmethod
     def get_default_pk(cls):
-        return Availability.objects.get_or_create(name='Business hours')[0].pk
+        return Availability.objects.get_or_create(name="Business hours")[0].pk
 
     def __str__(self):
         return self.name
+
+
 class SystemType(models.Model):
     """
     Represents the system type of an IT System within DBCA.
     """
+
     class Meta:
         verbose_name = "System Type"
         verbose_name_plural = "System Types"
@@ -77,15 +88,17 @@ class SystemType(models.Model):
 
     @classmethod
     def get_default_pk(cls):
-        return SystemType.objects.get_or_create(name='Application')[0].pk
-    
+        return SystemType.objects.get_or_create(name="Application")[0].pk
+
     def __str__(self):
         return self.name
+
 
 class Sensitivity(models.Model):
     """
     Represents the sensitivity of an IT System within DBCA.
     """
+
     class Meta:
         verbose_name = "Sensitivity"
         verbose_name_plural = "Sensitivities"
@@ -94,10 +107,11 @@ class Sensitivity(models.Model):
 
     @classmethod
     def get_default_pk(cls):
-        return Sensitivity.objects.get_or_create(name='Official')[0].pk
+        return Sensitivity.objects.get_or_create(name="Official")[0].pk
 
     def __str__(self):
         return self.name
+
 
 class ITSystemRecord(models.Model):
     """Represents a named system providing a package of functionality to
@@ -120,7 +134,7 @@ class ITSystemRecord(models.Model):
         related_name="assigned_status",
         help_text="Status",
     )
-    division =  models.ForeignKey(
+    division = models.ForeignKey(
         Division,
         on_delete=models.PROTECT,
         null=True,
@@ -168,7 +182,7 @@ class ITSystemRecord(models.Model):
     seasonality = models.ForeignKey(
         Seasonality,
         on_delete=models.PROTECT,
-        default = Seasonality.get_default_pk,
+        default=Seasonality.get_default_pk,
         verbose_name="Seasonality",
         related_name="assigned_seasonality",
         help_text="Seasonality",
@@ -176,7 +190,7 @@ class ITSystemRecord(models.Model):
     availability = models.ForeignKey(
         Availability,
         on_delete=models.PROTECT,
-        default = Availability.get_default_pk,
+        default=Availability.get_default_pk,
         verbose_name="Availability",
         related_name="assigned_availability",
         help_text="Availability",
@@ -188,12 +202,12 @@ class ITSystemRecord(models.Model):
     disposal_authority = models.CharField(max_length=255, null=True, blank=True, verbose_name="Disposal Authority")
     retention_and_disposal = models.CharField(max_length=255, null=True, blank=True, verbose_name="Retention and Disposal")
     ubcs = models.CharField(max_length=255, null=True, blank=True, verbose_name="UBCS")
-    sensitivity =  models.ForeignKey(
+    sensitivity = models.ForeignKey(
         Sensitivity,
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        default = Sensitivity.get_default_pk,
+        default=Sensitivity.get_default_pk,
         verbose_name="Sensitivity",
         related_name="assigned_sensitivity",
         help_text="Sensitivity",
@@ -203,7 +217,7 @@ class ITSystemRecord(models.Model):
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        default = SystemType.get_default_pk,
+        default=SystemType.get_default_pk,
         verbose_name="System Type",
         related_name="assigned_system_type",
         help_text="System Type",
@@ -212,7 +226,7 @@ class ITSystemRecord(models.Model):
     # Meta-Data fields
     created_date = models.DateTimeField(auto_now_add=True, verbose_name="Created")
     created_by = models.EmailField(editable=False, verbose_name="Created By")
-    modified_date = models.DateTimeField(auto_now=True, verbose_name= "Modified")
+    modified_date = models.DateTimeField(auto_now=True, verbose_name="Modified")
     modified_by = models.EmailField(editable=False, verbose_name="Modified By")
 
     @property
@@ -227,87 +241,97 @@ class ITSystemRecord(models.Model):
         Compares a record instance with itself, returning a list of differences between the two.
         These differences are returned in the form of dictionaries containing the field, the old (current) value, and the new (external) value.
         """
-        excluded_fields = ['created_date','modified_date', 'created_by', 'modified_by', 'id', '_state', 'system_id']
+        excluded_fields = ["created_date", "modified_date", "created_by", "modified_by", "id", "_state", "system_id"]
         changes = []
         if obj:
             self_fields = self.__dict__
             obj_fields = obj.__dict__
             for self_val, obj_val in self_fields.items():
-                if self_val not in excluded_fields:
-                    try:
-                        #  obj_fileds' 'Or None' accounts for empty string values, self fields' 'Or None' allows for Boolean 'False' equivalency
-                        if (self_fields[self_val] or None) != (obj_fields[self_val] or None):
-                            changes.append({"field": self.__strip_field__(str(self_val)),"verbose_field": self.__display_field__(str(self_val)),  "old":self.__display_val__(self_val,self_fields[self_val]), "new": obj.__display_val__(self_val, obj_fields[self_val])})
-                    except KeyError as e:
-                        print("couldn't find " + self_val)
-                        print(e)
+                if (self_val not in excluded_fields) and (self_val in self_fields) and (self_val in obj_fields):
+                    #  obj_fileds' 'Or None' accounts for empty string values, self fields' 'Or None' allows for Boolean 'False' equivalency
+                    if (self_fields[self_val] or None) != (obj_fields[self_val] or None):
+                        changes.append(
+                            {
+                                "field": self.__strip_field__(str(self_val)),
+                                "verbose_field": self.__display_field__(str(self_val)),
+                                "old": self.__display_val__(self_val, self_fields[self_val]),
+                                "new": obj.__display_val__(self_val, obj_fields[self_val]),
+                            }
+                        )
         else:
             self_fields = self.__dict__
             for self_val in self_fields.items():
                 if self_val[0] not in excluded_fields:
-                    changes.append({"field": self.__strip_field__(self_val[0]), "verbose_field": self.__display_field__(self_val[0]), "old":None, "new": self.__display_val__(self_val[0],self_val[1]) })
+                    changes.append(
+                        {
+                            "field": self.__strip_field__(self_val[0]),
+                            "verbose_field": self.__display_field__(self_val[0]),
+                            "old": None,
+                            "new": self.__display_val__(self_val[0], self_val[1]),
+                        }
+                    )
 
         return changes
-    
+
     def save(self, *args, **kwargs):
         """
         Overrides the default save method.
         This override converts empty string values to null values.
         """
-        if self.description == '':
+        if self.description == "":
             self.description = None
-        if self.link == '':
+        if self.link == "":
             self.link = None
-        if self.file_store_link == '':
+        if self.file_store_link == "":
             self.file_store_link = None
-        if self.disposal_authority == '':
+        if self.disposal_authority == "":
             self.disposal_authority = None
-        if self.retention_and_disposal == '':
+        if self.retention_and_disposal == "":
             self.retention_and_disposal = None
-        if self.ubcs == '':
+        if self.ubcs == "":
             self.ubcs = None
 
         super(ITSystemRecord, self).save(*args, **kwargs)
-    
-    def set_from_dict(self, dict, plain_text = True):
+
+    def set_from_dict(self, dict, plain_text=True):
         """
         Sets field values from inputted dictionary object.
         If plain_text is false, data with fk values is interpreted literally instead of as plain text
         """
-        self.system_id = dict.get('system_id')
-        self.name = dict.get('name')
-        self.description = dict.get('description')
-        self.link = dict.get('link')
-        self.file_store_link = dict.get('file_store_link')
-        self.disposal_authority = dict.get('disposal_authority')
-        self.retention_and_disposal = dict.get('retention_and_disposal')
-        self.ubcs = dict.get('ubcs')
+        self.system_id = dict.get("system_id")
+        self.name = dict.get("name")
+        self.description = dict.get("description")
+        self.link = dict.get("link")
+        self.file_store_link = dict.get("file_store_link")
+        self.disposal_authority = dict.get("disposal_authority")
+        self.retention_and_disposal = dict.get("retention_and_disposal")
+        self.ubcs = dict.get("ubcs")
         if plain_text:
-            self.division = self.__get_choice_fk(dict.get('division'), Division)
-            self.status =  self.__get_choice_fk(dict.get('status'), Status)
-            self.seasonality =   self.__get_choice_fk(dict.get('seasonality'), Seasonality)
-            self.availability =   self.__get_choice_fk(dict.get('availability'), Availability)
-            self.system_owner = self.__get_user_fk(dict.get('system_owner'),'system_owner')
-            self.technology_custodian = self.__get_user_fk(dict.get('technology_custodian'),'technology_custodian')
-            self.information_custodian = self.__get_user_fk(dict.get('information_custodian'),'information_custodian')
-            self.business_service_owner = self.__get_user_fk(dict.get('business_service_owner'),'business_service_owner')
-            self.sensitivity =  self.__get_choice_fk(dict.get('sensitivity'),Sensitivity)
-            self.system_type =  self.__get_choice_fk(dict.get('system_type'),SystemType)
-            vital_records = str(dict.get('vital_records'))
+            self.division = self.__get_choice_fk(dict.get("division"), Division)
+            self.status = self.__get_choice_fk(dict.get("status"), Status)
+            self.seasonality = self.__get_choice_fk(dict.get("seasonality"), Seasonality)
+            self.availability = self.__get_choice_fk(dict.get("availability"), Availability)
+            self.system_owner = self.__get_user_fk(dict.get("system_owner"), "system_owner")
+            self.technology_custodian = self.__get_user_fk(dict.get("technology_custodian"), "technology_custodian")
+            self.information_custodian = self.__get_user_fk(dict.get("information_custodian"), "information_custodian")
+            self.business_service_owner = self.__get_user_fk(dict.get("business_service_owner"), "business_service_owner")
+            self.sensitivity = self.__get_choice_fk(dict.get("sensitivity"), Sensitivity)
+            self.system_type = self.__get_choice_fk(dict.get("system_type"), SystemType)
+            vital_records = str(dict.get("vital_records"))
             if vital_records:
-                self.vital_records = vital_records.strip().lower()=='true'
+                self.vital_records = vital_records.strip().lower() == "true"
         else:
-            self.division = Division.objects.get(pk=dict.get('division_id'))
-            self.status = Status.objects.get(pk=dict.get('status_id'))
-            self.seasonality = Seasonality.objects.get(pk=dict.get('seasonality_id'))
-            self.availability = Availability.objects.get(pk=dict.get('availability_id'))
-            self.system_owner = DepartmentUser.objects.get(pk = dict.get('system_owner_id'))
-            self.technology_custodian = DepartmentUser.objects.get(pk = dict.get('technology_custodian_id'))
-            self.information_custodian = DepartmentUser.objects.get(pk = dict.get('information_custodian_id'))
-            self.business_service_owner = DepartmentUser.objects.get(pk = dict.get('business_service_owner_id'))
-            self.sensitivity = Sensitivity.objects.get(pk=dict.get('sensitivity_id'))
-            self.system_type = SystemType.objects.get(pk=dict.get('system_type_id'))
-            self.vital_records = dict.get('vital_records')
+            self.division = Division.objects.get(pk=dict.get("division_id"))
+            self.status = Status.objects.get(pk=dict.get("status_id"))
+            self.seasonality = Seasonality.objects.get(pk=dict.get("seasonality_id"))
+            self.availability = Availability.objects.get(pk=dict.get("availability_id"))
+            self.system_owner = DepartmentUser.objects.get(pk=dict.get("system_owner_id"))
+            self.technology_custodian = DepartmentUser.objects.get(pk=dict.get("technology_custodian_id"))
+            self.information_custodian = DepartmentUser.objects.get(pk=dict.get("information_custodian_id"))
+            self.business_service_owner = DepartmentUser.objects.get(pk=dict.get("business_service_owner_id"))
+            self.sensitivity = Sensitivity.objects.get(pk=dict.get("sensitivity_id"))
+            self.system_type = SystemType.objects.get(pk=dict.get("system_type_id"))
+            self.vital_records = dict.get("vital_records")
 
     def __str__(self):
         """
@@ -321,11 +345,11 @@ class ITSystemRecord(models.Model):
         """
         return_val = value
         if field.endswith("_id"):
-            return_val = str(getattr(self,field[:-3]))
+            return_val = str(getattr(self, field[:-3]))
 
         return return_val
-    
-    def __strip_field__(self,field):
+
+    def __strip_field__(self, field):
         """
         Strips any _id suffix from a field name.
         """
@@ -334,7 +358,7 @@ class ITSystemRecord(models.Model):
             field_name = field[:-3]
         return field_name
 
-    def __display_field__(self,field):
+    def __display_field__(self, field):
         """
         Returns the natural display string for a field value.
         """
