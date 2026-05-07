@@ -1,14 +1,100 @@
 from django.urls import reverse
 
 from itassets.test_api import ApiTestCase
+from .test_model import create_random_record
+
 
 class ViewsTestCase(ApiTestCase):
-    def test_view_it_systems_register(self):
+    def test_it_systems_register_empty(self):
         """
         Test the it systems register view.
-        Will be expanded upon after the register view is completed.
+        Ensures that an empty database is displayed as such.
         """
         url = reverse("it_systems_register")
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "No results found")
 
+    def test_it_systems_register_populated(self):
+        """
+        Test the it systems register view.
+        Ensures that a populated database displays it's records
+        """
+        record1 = create_random_record()
+        record2 = create_random_record()
+
+        record1.save()
+        record2.save()
+
+        url = reverse("it_systems_register")
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, record1.system_id)
+        self.assertContains(resp, record2.system_id)
+        self.assertNotContains(resp, "No results found")
+
+    def test_it_systems_register_filtering(self):
+        """
+        Test the it systems register view.
+        Ensures that a populated database can be accurately filtered.
+        """
+        record1 = create_random_record()
+        record2 = create_random_record()
+
+        record1.save()
+        record2.save()
+
+        # Tests Search
+        url = (
+            reverse("it_systems_register")
+            + "?q="
+            + str(record1.system_id)
+            + "&status=&division=&seasonality=&availability=&vital_records=&sensitivity=&system_type"
+        )
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, record1.system_id)
+        self.assertNotContains(resp, record2.system_id)
+
+        # Tests fk choice field filtering
+        url = (
+            reverse("it_systems_register")
+            + "?q=&status=&division="
+            + str(record2.division.id)
+            + "&seasonality=&availability=&vital_records=&sensitivity=&system_type"
+        )
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, record1.system_id)
+        self.assertContains(resp, record2.system_id)
+
+        # Tests boolean choice field filtering
+        record1.vital_records = True
+        record2.vital_records = False
+        record1.save()
+        record2.save()
+        url = (
+            reverse("it_systems_register")
+            + "?q=&status=&division=&seasonality=&availability=&vital_records="
+            + str(record1.vital_records)
+            + "&sensitivity=&system_type"
+        )
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, record1.system_id)
+        self.assertNotContains(resp, record2.system_id)
+
+        # Tests failure to find from mismatch
+        url = (
+            reverse("it_systems_register")
+            + "?q="
+            + str(record2.name)
+            + "&status=&division=&seasonality=&availability=&vital_records="
+            + str(record1.vital_records)
+            + "&sensitivity=&system_type"
+        )
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "No results found")
+        self.assertNotContains(resp, record1.system_id)
+        self.assertNotContains(resp, record2.system_id)
