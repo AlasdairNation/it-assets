@@ -180,12 +180,12 @@ class ITSystemRecordAPIResource(View):
             system_id = system_id=kwargs["system_id"]
             try:
                 old_record = ITSystemRecord.objects.get(system_id=system_id)
-                data = json.loads(request.POST)
+                data = dict(json.loads(request.body))
                 force = data.get('force')==True
                 new_record = data.get('record')
                 old_record.set_from_dict(dict=new_record, plain_text=True, force=force)
                 old_record.save()
-                response = JsonResponse(dict=old_record.to_dict(), save=False)
+                response = JsonResponse(data=old_record.to_dict(), safe=False)
                 
             except ITSystemRecord.DoesNotExist:
                 response = HttpResponseBadRequest("Can't find system " + system_id)
@@ -193,13 +193,22 @@ class ITSystemRecordAPIResource(View):
                 response = HttpResponseBadRequest("JSON data is invalid")
             except ObjectDoesNotExist as e:
                 response = HttpResponseBadRequest("Failed to update system " + system_id + " : " + str(e))
+            except KeyError as e:
+                response = HttpResponseBadRequest("JSON data is missing required values: " + str(e))
             except Exception as e:
                 response = HttpResponseBadRequest("Unexpected error: " + str(e))
                 
-        elif ("old_contact" in kwargs and kwargs["old_contact"]) and ("new_contact" in kwargs and kwargs["new_contact"]):
-            changes = replace_contact(old_contact=kwargs["old_contact"], new_contact=kwargs["new_contact"])
-            response = JsonResponse(changes, safe=False)
         else:
-            response = HttpResponseBadRequest("Invalid request, please specify 'old_contact' and 'new_contact'")
+            try:
+                data = dict(json.loads(request.body))
+                changes = replace_contact(old_contact=data["old_contact"], new_contact=data["new_contact"])
+                response = JsonResponse(changes, safe=False)
+            except json.JSONDecodeError:
+                response = HttpResponseBadRequest("JSON data is invalid")
+            except KeyError as e:
+                response = HttpResponseBadRequest("JSON data is missing required values: " + str(e))
+            except Exception as e:
+                response = HttpResponseBadRequest("Unexpected error: " + str(e))
+
         return response
             

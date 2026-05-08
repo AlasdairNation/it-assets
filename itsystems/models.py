@@ -347,7 +347,7 @@ class ITSystemRecord(models.Model):
                 "system_owner": self.system_owner.email if self.system_owner else None,
                 "technology_custodian": self.technology_custodian.email if self.technology_custodian else None,
                 "information_custodian": self.information_custodian.email if self.information_custodian else None,
-                "sensitivity": self.sensitivity.name if self.sensitivity else None,
+                "seasonality": self.seasonality.name if self.seasonality else None,
                 "availability": self.availability.name if self.availability else None,
                 "link": self.link,
                 "description": self.description,

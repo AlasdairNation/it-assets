@@ -148,21 +148,21 @@ def replace_contact(old_contact,new_contact):
             record_changes = []
             if record.business_service_owner == old_contact_fk:
                 record.business_service_owner = new_contact_fk
-                record_changes.append({"business_service_owner"})
+                record_changes.append("business_service_owner")
             if record.system_owner == old_contact_fk:
                 record.system_owner = new_contact_fk
-                record_changes.append({"system_owner"})               
+                record_changes.append("system_owner")
             if record.technology_custodian == old_contact_fk:
                 record.technology_custodian = new_contact_fk
-                record_changes.append({"technology_custodian"})
+                record_changes.append("technology_custodian")
             if record.information_custodian == old_contact_fk:
                 record.information_custodian = new_contact_fk
-                record_changes.append({"information_custodian"})
+                record_changes.append("information_custodian")
             
             if len(record_changes)>0:
                 try:
                     record.save()
-                    changes.append({'record':record.system_id,'success':True, 'changes':changes})
+                    changes.append({'record':record.system_id,'success':True, 'changes':record_changes})
                 except Exception as e:
                     changes.append({'record':record.system_id,'success':False, 'changes':str(e)})
     return changes
