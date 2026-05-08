@@ -1,15 +1,20 @@
+import json
 from datetime import date, datetime
 
 from django.shortcuts import render
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import ListView, View
-from django.http import HttpResponse
 from django.db.models import Q
+from django.conf import settings
+from django.http import HttpResponse, JsonResponse, HttpResponseBadRequest
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_control
+from django.core.exceptions import ObjectDoesNotExist
 
 from itassets.utils import get_next_pages, get_previous_pages
 
 from .models import ITSystemRecord, Status, Division, Seasonality, Availability, Sensitivity, SystemType
-from .utils import export_csv, import_csv, retrieve
+from .utils import export_csv, import_csv, retrieve, replace_contact
 
 
 class ITSystemsRegister(LoginRequiredMixin, ListView):
@@ -128,3 +133,82 @@ class ImportRegisterChangesFromCSV(LoginRequiredMixin, PermissionRequiredMixin, 
             # Displays error message
             response = render(request, "admin/itsystems/itsystemrecord/upload_csv.html", context=results["validation"])
         return response
+    
+
+class ITSystemRecordAPIResource(View):
+    """An API view that returns JSON of the IT System Register"""
+
+    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
+    def get(self, request, *args, **kwargs):
+        response = None
+        try:
+            queryset = (
+                ITSystemRecord.objects.all()
+                .select_related(
+                    "status",
+                    "division",
+                    "seasonality",
+                    "availability",
+                    "sensitivity",
+                    "system_type"
+                )
+                .order_by("system_id")
+            )
+
+            # Queryset filtering.
+            if "system_id" in kwargs and kwargs["system_id"]:
+                queryset = queryset.filter(system_id=kwargs["system_id"])
+
+            register = [record.to_dict() for record in queryset]
+
+            response = JsonResponse(register, safe=False)
+
+        except UnboundLocalError as e:
+            if "system_id" in kwargs and kwargs["system_id"]:
+                response = HttpResponseBadRequest("Can't find system " + kwargs["system_id"] + ": " + str(e))
+            else:
+                response = HttpResponseBadRequest(str(e))
+        return response
+    
+    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
+    def post(self, request, *args, **kwargs):
+        """An API view that allows users to update a record or a contact"""
+
+        response = None
+
+        if "system_id" in kwargs and kwargs["system_id"]:  # Allow filtering by object system_id.
+            system_id = system_id=kwargs["system_id"]
+            try:
+                old_record = ITSystemRecord.objects.get(system_id=system_id)
+                data = dict(json.loads(request.body))
+                force = data.get('force')==True
+                new_record = data.get('record')
+                old_record.set_from_dict(dict=new_record, plain_text=True, force=force)
+                old_record.save()
+                response = JsonResponse(data=old_record.to_dict(), safe=False)
+                
+            except ITSystemRecord.DoesNotExist:
+                response = HttpResponseBadRequest("Can't find system " + system_id)
+            except json.JSONDecodeError:
+                response = HttpResponseBadRequest("JSON data is invalid")
+            except ObjectDoesNotExist as e:
+                response = HttpResponseBadRequest("Failed to update system " + system_id + " : " + str(e))
+            except KeyError as e:
+                response = HttpResponseBadRequest("JSON data is missing required values: " + str(e))
+            except Exception as e:
+                response = HttpResponseBadRequest("Unexpected error: " + str(e))
+                
+        else:
+            try:
+                data = dict(json.loads(request.body))
+                changes = replace_contact(old_contact=data["old_contact"], new_contact=data["new_contact"])
+                response = JsonResponse(changes, safe=False)
+            except json.JSONDecodeError:
+                response = HttpResponseBadRequest("JSON data is invalid")
+            except KeyError as e:
+                response = HttpResponseBadRequest("JSON data is missing required values: " + str(e))
+            except Exception as e:
+                response = HttpResponseBadRequest("Unexpected error: " + str(e))
+
+        return response
+            
