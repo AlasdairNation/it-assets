@@ -45,7 +45,7 @@ def import_csv(request):
     This function returns a dictionary containing the validation results and 3 lists respectively containing details of records created, records updated, and records that failed to process.
     """
     csv_file = request.FILES["csv_file"]
-    force = request.POST["force"]=="True"
+    force = request.POST["force"] == "True"
     update_list = []
     create_list = []
     failed_list = []
@@ -60,7 +60,7 @@ def import_csv(request):
             try:
                 found_record = ITSystemRecord.objects.get(system_id=record["system_id"])
             except ITSystemRecord.DoesNotExist:
-                found_record = None 
+                found_record = None
 
             try:
                 # Populate new record with data
@@ -99,8 +99,8 @@ def import_csv(request):
                         reversion.set_comment("Created via CSV import.")
                     changes = new_record.compare(None)
                     create_list.append({"record": new_record.system_id_name, "changes": changes})
-                
-                if len(force_failures)>0:
+
+                if len(force_failures) > 0:
                     error_message = "Partial Failure(s): " + "\r\n".join(force_failures)
                     failed_list.append({"record": record["system_id"], "changes": error_message})
 
@@ -130,7 +130,7 @@ def retrieve(cls, id):
     return model
 
 
-def replace_contact(old_contact,new_contact):
+def replace_contact(old_contact, new_contact):
     records = ITSystemRecord.objects.all()
     changes = []
 
@@ -142,7 +142,7 @@ def replace_contact(old_contact,new_contact):
         new_contact_fk = DepartmentUser.objects.get(email=new_contact)
     except DepartmentUser.DoesNotExist:
         old_contact_fk = None
-    
+
     if old_contact_fk and new_contact_fk:
         for record in records:
             record_changes = []
@@ -158,13 +158,13 @@ def replace_contact(old_contact,new_contact):
             if record.information_custodian == old_contact_fk:
                 record.information_custodian = new_contact_fk
                 record_changes.append("information_custodian")
-            
-            if len(record_changes)>0:
+
+            if len(record_changes) > 0:
                 try:
                     record.save()
-                    changes.append({'record':record.system_id,'success':True, 'changes':record_changes})
+                    changes.append({"record": record.system_id, "success": True, "changes": record_changes})
                 except Exception as e:
-                    changes.append({'record':record.system_id,'success':False, 'changes':str(e)})
+                    changes.append({"record": record.system_id, "success": False, "changes": str(e)})
     return changes
 
 

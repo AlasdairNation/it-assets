@@ -31,7 +31,7 @@ class UtilsTests(TestCase):
     class FauxPOST:
         def __init__(self, csv_file, user, force=False):
             self.FILES = {"csv_file": csv_file}
-            self.POST = {"force":force}
+            self.POST = {"force": force}
             self.user = user
 
     def setUp(self):

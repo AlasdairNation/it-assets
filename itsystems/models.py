@@ -315,8 +315,12 @@ class ITSystemRecord(models.Model):
             self.availability = self.__get_choice_fk(dict.get("availability"), Availability, force, force_failures)
             self.system_owner = self.__get_user_fk(dict.get("system_owner"), "system_owner", force, force_failures)
             self.technology_custodian = self.__get_user_fk(dict.get("technology_custodian"), "technology_custodian", force, force_failures)
-            self.information_custodian = self.__get_user_fk(dict.get("information_custodian"), "information_custodian", force, force_failures)
-            self.business_service_owner = self.__get_user_fk(dict.get("business_service_owner"), "business_service_owner", force, force_failures)
+            self.information_custodian = self.__get_user_fk(
+                dict.get("information_custodian"), "information_custodian", force, force_failures
+            )
+            self.business_service_owner = self.__get_user_fk(
+                dict.get("business_service_owner"), "business_service_owner", force, force_failures
+            )
             self.sensitivity = self.__get_choice_fk(dict.get("sensitivity"), Sensitivity, force, force_failures)
             self.system_type = self.__get_choice_fk(dict.get("system_type"), SystemType, force, force_failures)
             vital_records = str(dict.get("vital_records"))
@@ -339,26 +343,26 @@ class ITSystemRecord(models.Model):
 
     def to_dict(self):
         return {
-                "system_id": self.system_id,
-                "name": self.name,
-                "status": self.status.name if self.status else None,
-                "division": self.division.name if self.division else None,
-                "business_service_owner": self.business_service_owner.email if self.business_service_owner else None,
-                "system_owner": self.system_owner.email if self.system_owner else None,
-                "technology_custodian": self.technology_custodian.email if self.technology_custodian else None,
-                "information_custodian": self.information_custodian.email if self.information_custodian else None,
-                "seasonality": self.seasonality.name if self.seasonality else None,
-                "availability": self.availability.name if self.availability else None,
-                "link": self.link,
-                "description": self.description,
-                "file_store_link": self.file_store_link,
-                "vital_records": self.vital_records,
-                "disposal_authority": self.disposal_authority,
-                "retention_and_disposal": self.retention_and_disposal,
-                "ubcs":self.ubcs,
-                "sensitivity": self.sensitivity.name if self.sensitivity else None,
-                "system_type": self.system_type.name if self.system_type else None
-            }
+            "system_id": self.system_id,
+            "name": self.name,
+            "status": self.status.name if self.status else None,
+            "division": self.division.name if self.division else None,
+            "business_service_owner": self.business_service_owner.email if self.business_service_owner else None,
+            "system_owner": self.system_owner.email if self.system_owner else None,
+            "technology_custodian": self.technology_custodian.email if self.technology_custodian else None,
+            "information_custodian": self.information_custodian.email if self.information_custodian else None,
+            "seasonality": self.seasonality.name if self.seasonality else None,
+            "availability": self.availability.name if self.availability else None,
+            "link": self.link,
+            "description": self.description,
+            "file_store_link": self.file_store_link,
+            "vital_records": self.vital_records,
+            "disposal_authority": self.disposal_authority,
+            "retention_and_disposal": self.retention_and_disposal,
+            "ubcs": self.ubcs,
+            "sensitivity": self.sensitivity.name if self.sensitivity else None,
+            "system_type": self.system_type.name if self.system_type else None,
+        }
 
     def __str__(self):
         """

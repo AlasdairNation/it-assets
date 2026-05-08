@@ -1,5 +1,4 @@
 from django.urls import reverse
-from mixer.backend.django import mixer
 
 import json
 
@@ -15,7 +14,6 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         create_random_record().save()
         create_random_record().save()
         self.records = ITSystemRecord.objects.all()
-
 
     def test_list(self):
         """Test the ITSystemRecordAPIResource list responses"""
@@ -38,7 +36,7 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         url = reverse("it_system_api_resource", kwargs={"system_id": self.records[0].system_id})
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.records[0].system_id)
         self.assertNotContains(response, self.records[1].system_id)
         self.assertNotContains(response, self.records[2].system_id)
@@ -51,10 +49,10 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         new_name = old_name[:-1] + "added_string"
         data = self.records[0].to_dict()
         data["name"] = new_name
-        json_data = json.dumps({'force':False, 'record':data})
-        response = self.client.post(path=url, data=json_data, secure=False, content_type='application/json')
+        json_data = json.dumps({"force": False, "record": data})
+        response = self.client.post(path=url, data=json_data, secure=False, content_type="application/json")
         updated_record = ITSystemRecord.objects.get(system_id=data["system_id"])
-        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.status_code, 200)
         self.assertContains(response, new_name)
         self.assertEqual(updated_record.name, new_name)
 
@@ -65,7 +63,7 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         target2 = self.records[1]
         non_target = self.records[2]
 
-        target1.technology_custodian  = target2.business_service_owner
+        target1.technology_custodian = target2.business_service_owner
         target1.information_custodian = target2.business_service_owner
         target1.save()
 
@@ -73,11 +71,11 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         new_contact = target1.business_service_owner.email
 
         url = reverse("it_system_api_resource")
-        json_data = json.dumps({"new_contact":new_contact,"old_contact":old_contact})
-        response = self.client.post(path=url, data=json_data, secure=False, content_type='application/json')
+        json_data = json.dumps({"new_contact": new_contact, "old_contact": old_contact})
+        response = self.client.post(path=url, data=json_data, secure=False, content_type="application/json")
 
         # Ensures response is correct
-        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.status_code, 200)
         self.assertContains(response, target1.system_id)
         self.assertContains(response, target2.system_id)
         self.assertNotContains(response, non_target.system_id)
@@ -94,13 +92,3 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         self.assertEqual(target1.technology_custodian.email, new_contact)
         self.assertEqual(target1.information_custodian.email, new_contact)
         self.assertEqual(target2.business_service_owner.email, new_contact)
-
-
-
-        
-
-
-
-        
-        
-
