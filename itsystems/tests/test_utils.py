@@ -1,14 +1,15 @@
-import io
 import csv
+import io
 
-from django.test import TestCase
-from django.http import HttpResponse
 from django.contrib.auth.models import User
+from django.http import HttpResponse
+from django.test import TestCase
 
-from .test_model import create_random_record
 from itsystems.models import ITSystemRecord
 from itsystems.utils import __validate_csv as validate
 from itsystems.utils import export_csv, import_csv
+
+from .test_model import create_random_record
 
 
 class UtilsTests(TestCase):
@@ -87,7 +88,7 @@ class UtilsTests(TestCase):
         """
         Tests that all record import states in import_csv() are successfully and accurately reported
         """
-        faux_user = User.objects.create_user(username="testuser", email="user@dbca.wa.gov.au.com", password="pass")
+        faux_user = User.objects.create_user(username="testuser", email="user@dbca.wa.gov.au", password="pass")
 
         # Validates that identical values do not trigger an update, deletion, or failure
         results = import_csv(get_faux_post(faux_user))

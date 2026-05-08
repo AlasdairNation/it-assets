@@ -7,6 +7,9 @@ from typing import List, Literal, Optional
 
 import requests
 from django.conf import settings
+from django.contrib.admin.models import ADDITION, LogEntry
+from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 from psycopg import Connection, connect, sql
@@ -16,6 +19,7 @@ from organisation.microsoft_products import MS_PRODUCTS
 from organisation.models import AscenderActionLog, CostCentre, DepartmentUser, DepartmentUserLog, Location
 from organisation.utils import generate_password, ms_graph_get_subscribed_sku, ms_graph_get_user, ms_graph_validate_password, title_except
 
+User = get_user_model()
 LOGGER = logging.getLogger("organisation")
 DATE_MAX = date(2049, 12, 31)
 # The list below defines which columns to SELECT from the Ascender view, what to name the object
@@ -1081,6 +1085,17 @@ def department_user_create(
         ascender_data_updated=timezone.localtime(),
         position_no=position_no,
     )
+    # Create an admin log entry for initial creation of the new user.
+    user = User.objects.order_by("pk").first()  # Admin user
+    LogEntry.objects.log_action(
+        user_id=user.pk,
+        content_type_id=ContentType.objects.get_for_model(DepartmentUser).pk,
+        object_id=new_user.pk,
+        object_repr=str(new_user),
+        action_flag=ADDITION,
+        change_message="System-generated initial version created",
+    )
+
     ascender_record = f"{job['employee_id']}, {job['first_name']} {job['surname']}"
     log = f"Created new department user {new_user} ({ascender_record})"
     AscenderActionLog.objects.create(level="INFO", log=log, ascender_data=job)

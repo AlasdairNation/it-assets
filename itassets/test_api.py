@@ -57,7 +57,7 @@ class ApiTestCase(TestCase):
         )
 
         # Generate a test user for endpoint responses.
-        self.testuser = User.objects.create_user(username="testuser", email="user@dbca.wa.gov.au.com", password="pass")
+        self.testuser = User.objects.create_user(username="testuser", email="user@dbca.wa.gov.au", password="pass")
         # Create a DepartmentUser object for testuser.
         mixer.blend(DepartmentUser, active=True, email=self.testuser.email, cost_centre=None, ad_guid=uuid1)
         # Log in testuser by default.
