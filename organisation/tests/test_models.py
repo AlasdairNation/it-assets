@@ -544,7 +544,9 @@ class UpdateFromAscenderDataTestCase(TestCase):
 
     def test_location_set_from_ascender_geo_desc(self):
         loc = mixer.blend(Location, ascender_desc="17 Dick Perry Ave, KENSINGTON")
-        user = self._make_user({"first_name": "FRANK", "preferred_name": None, "surname": "BLACK", "geo_location_desc": "17 Dick Perry Ave, KENSINGTON"})
+        user = self._make_user(
+            {"first_name": "FRANK", "preferred_name": None, "surname": "BLACK", "geo_location_desc": "17 Dick Perry Ave, KENSINGTON"}
+        )
         user.update_from_ascender_data()
         user.refresh_from_db()
         self.assertEqual(user.location, loc)
