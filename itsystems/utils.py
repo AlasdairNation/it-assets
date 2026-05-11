@@ -131,6 +131,10 @@ def retrieve(cls, id):
 
 
 def replace_contact(old_contact, new_contact):
+    """
+    Replaces all instances of one contact in the IT Systems Register with another.
+    It then returns a list of changes.
+    """
     records = ITSystemRecord.objects.all()
     changes = []
 
