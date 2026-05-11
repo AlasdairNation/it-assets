@@ -144,6 +144,8 @@
                                 {% endfor%}
                             </select>
                         </th>
+                        <th>Description</th>
+                        <th>Link</th>
                         <th>Business Service Owner</th>
                         <th>System Owner</th>
                         <th>Technical Custodian</th>
@@ -172,8 +174,6 @@
                                 {% endfor%}
                             </select>
                         </th>
-                        <th>Link</th>
-                        <th>Description</th>
                         <th>File Store Link</th>
                         <th>Vital Records
                             <select id="vital_records" name="vital_records" form="filters" onchange="this.form.submit()">
@@ -236,6 +236,14 @@
                                 </p>
                             </td>
                             <td>
+                                <p style = "width:50ch">
+                                    {{obj.description|default_if_none:""}}
+                                </p>
+                            </td>
+                            <td>
+                                <a href="{{ obj.link |default_if_none:"" }}">{{obj.link | default_if_none:""}}</a>
+                            </td>
+                            <td>
                                 {{ obj.business_service_owner.name |default_if_none:"" }}
                                 <br>
                                 <a href="mailto:{{ obj.business_service_owner.email |default_if_none:"" }}">{{ obj.business_service_owner.email |default_if_none:"" }}</a>
@@ -265,14 +273,6 @@
                             </td>
                             <td style="white-space:nowrap">
                                 {{obj.availability|default_if_none:""}}
-                            </td>
-                            <td>
-                                <a href="{{ obj.link |default_if_none:"" }}">{{obj.link | default_if_none:""}}</a>
-                            </td>
-                            <td>
-                                <p style = "width:50ch">
-                                    {{obj.description|default_if_none:""}}
-                                </p>
                             </td>
                             <td>
                                 <p style = "width:50ch; overflow-wrap: break-word">

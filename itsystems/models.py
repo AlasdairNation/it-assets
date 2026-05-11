@@ -143,6 +143,8 @@ class ITSystemRecord(models.Model):
         related_name="assigned_division",
         help_text="Division",
     )
+    description = models.TextField(null=True, blank=True, verbose_name="Description")
+    link = models.URLField(max_length=2048, null=True, blank=True, help_text="URL to web application")
     business_service_owner = models.ForeignKey(
         DepartmentUser,
         on_delete=models.SET_NULL,
@@ -195,8 +197,6 @@ class ITSystemRecord(models.Model):
         related_name="assigned_availability",
         help_text="Availability",
     )
-    link = models.URLField(max_length=2048, null=True, blank=True, help_text="URL to web application")
-    description = models.TextField(null=True, blank=True, verbose_name="Description")
     file_store_link = models.URLField(max_length=2048, null=True, blank=True, verbose_name="File Store Link", help_text="URL to file store")
     vital_records = models.BooleanField(default=False, verbose_name="Vital Records")
     disposal_authority = models.CharField(max_length=255, null=True, blank=True, verbose_name="Disposal Authority")
@@ -347,14 +347,14 @@ class ITSystemRecord(models.Model):
             "name": self.name,
             "status": self.status.name if self.status else None,
             "division": self.division.name if self.division else None,
+            "description": self.description,
+            "link": self.link,
             "business_service_owner": self.business_service_owner.email if self.business_service_owner else None,
             "system_owner": self.system_owner.email if self.system_owner else None,
             "technology_custodian": self.technology_custodian.email if self.technology_custodian else None,
             "information_custodian": self.information_custodian.email if self.information_custodian else None,
             "seasonality": self.seasonality.name if self.seasonality else None,
             "availability": self.availability.name if self.availability else None,
-            "link": self.link,
-            "description": self.description,
             "file_store_link": self.file_store_link,
             "vital_records": self.vital_records,
             "disposal_authority": self.disposal_authority,
@@ -363,6 +363,9 @@ class ITSystemRecord(models.Model):
             "sensitivity": self.sensitivity.name if self.sensitivity else None,
             "system_type": self.system_type.name if self.system_type else None,
         }
+    
+    def to_array(self):
+        return self.to_dict().values()
 
     def __str__(self):
         """
