@@ -168,7 +168,7 @@ class ITSystemRecordAPIResource(View):
         """An API view that allows users to update a record or a contact"""
 
         response = None
-
+        
         if "system_id" in kwargs and kwargs["system_id"]:  # Allow filtering by object system_id.
             system_id = system_id = kwargs["system_id"]
             try:
