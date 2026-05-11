@@ -14,7 +14,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from itassets.utils import get_next_pages, get_previous_pages
 
 from .models import ITSystemRecord, Status, Division, Seasonality, Availability, Sensitivity, SystemType
-from .utils import export_csv, import_csv, retrieve, replace_contact
+from .utils import export_csv, import_csv, retrieve, replace_contact, edit_record_from_dict
 
 
 class ITSystemsRegister(LoginRequiredMixin, ListView):
@@ -174,10 +174,7 @@ class ITSystemRecordAPIResource(View):
             try:
                 old_record = ITSystemRecord.objects.get(system_id=system_id)
                 data = dict(json.loads(request.body))
-                force = data.get("force")
-                new_record = data.get("record")
-                old_record.set_from_dict(dict=new_record, plain_text=True, force=force)
-                old_record.save()
+                changes = edit_record_from_dict(record=old_record, dict=data)
                 response = JsonResponse(data=old_record.to_dict(), safe=False)
 
             except ITSystemRecord.DoesNotExist:
@@ -185,11 +182,11 @@ class ITSystemRecordAPIResource(View):
             except json.JSONDecodeError:
                 response = HttpResponseBadRequest("JSON data is invalid")
             except ObjectDoesNotExist as e:
-                response = HttpResponseBadRequest("Failed to update system " + system_id + " : " + str(e))
+                response = HttpResponseBadRequest("Invalid field value in choice field - " + str(e))
             except KeyError as e:
-                response = HttpResponseBadRequest("JSON data is missing required values: " + str(e))
+                response = HttpResponseBadRequest("JSON data is missing required values - " + str(e))
             except Exception as e:
-                response = HttpResponseBadRequest("Unexpected error: " + str(e))
+                response = HttpResponseBadRequest("Unexpected error - " + str(e))
 
         else:
             try:
@@ -199,8 +196,10 @@ class ITSystemRecordAPIResource(View):
             except json.JSONDecodeError:
                 response = HttpResponseBadRequest("JSON data is invalid")
             except KeyError as e:
-                response = HttpResponseBadRequest("JSON data is missing required values: " + str(e))
+                response = HttpResponseBadRequest("JSON data is missing required values - " + str(e))
+            except ObjectDoesNotExist as e:
+                response = HttpResponseBadRequest("Invalid user email - " + str(e))
             except Exception as e:
-                response = HttpResponseBadRequest("Unexpected error: " + str(e))
+                response = HttpResponseBadRequest("Unexpected error - " + str(e))
 
         return response

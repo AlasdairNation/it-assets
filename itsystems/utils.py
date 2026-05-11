@@ -141,7 +141,7 @@ def replace_contact(old_contact, new_contact):
     try:
         new_contact_fk = DepartmentUser.objects.get(email=new_contact)
     except DepartmentUser.DoesNotExist:
-        old_contact_fk = None
+        new_contact_fk = None
 
     if old_contact_fk and new_contact_fk:
         for record in records:
@@ -165,7 +165,23 @@ def replace_contact(old_contact, new_contact):
                     changes.append({"record": record.system_id, "success": True, "changes": record_changes})
                 except Exception as e:
                     changes.append({"record": record.system_id, "success": False, "changes": str(e)})
+    else:
+        error_msg = "Failed to find user for value(s):"
+        if not old_contact_fk:
+            error_msg += " old_contact - '" + old_contact + "'"
+        if not new_contact_fk:
+            error_msg += " new_contact - '" + new_contact + "'"
+        raise DepartmentUser.DoesNotExist(error_msg)
     return changes
+
+
+def edit_record_from_dict(record, dict):
+    """updates record with new values passed in from a dictionary, returning the updated record values as a dictionary"""
+    updated_record = record.to_dict()
+    updated_record.update(dict)
+    record.set_from_dict(dict=updated_record, plain_text=True, force=False)
+    record.save()
+    return record.to_dict()
 
 
 def __validate_csv(csv_file):

@@ -10,9 +10,12 @@ from itsystems.models import ITSystemRecord
 class ITSystemRecordAPIResourceTestCase(ApiTestCase):
     def setUp(self):
         super().setUp()
-        create_random_record().save()
-        create_random_record().save()
-        create_random_record().save()
+        self.record1 = create_random_record()
+        self.record2 = create_random_record()
+        self.record3 = create_random_record()
+        self.record1.save()
+        self.record2.save()
+        self.record3.save()
         self.records = ITSystemRecord.objects.all()
 
     def test_list(self):
@@ -22,39 +25,86 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         self.assertEqual(response.status_code, 200)
         content = json.loads(response.content)
         # Response should contain each of the records, and should match the size of the database
-        # Tests id, string and fk field
         for record in self.records:
-            self.assertContains(response, record.system_id)
-            self.assertContains(response, record.name)
-            self.assertContains(response, record.division.name)
+            self.assert_response_contains_record(response, record)
         content = json.loads(response.content)
         self.assertEqual(len(content), 3)
 
     def test_search(self):
         """Test the ITSystemRecordAPIResource search for record functionality"""
 
-        url = reverse("it_system_api_resource", kwargs={"system_id": self.records[0].system_id})
+        # Searches for a record, ensuring it and only it is present
+        url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
         response = self.client.get(url)
-
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.records[0].system_id)
-        self.assertNotContains(response, self.records[1].system_id)
-        self.assertNotContains(response, self.records[2].system_id)
+        self.assert_response_contains_record(response, self.record1)
+        self.assert_response_does_not_contain_record(response, self.record2)
+        self.assert_response_does_not_contain_record(response, self.record3)
+
+        # Searches for a record that doesn't exist, ensuring that nothing is returned
+        url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id + "EXTRA_STRING"})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assert_response_does_not_contain_record(response, self.record1)
+        self.assert_response_does_not_contain_record(response, self.record2)
+        self.assert_response_does_not_contain_record(response, self.record3)
 
     def test_record_edit(self):
         """Test the ITSystemRecordAPIResource edit record functionality"""
 
-        url = reverse("it_system_api_resource", kwargs={"system_id": self.records[0].system_id})
-        old_name = self.records[0].name
+        # Tests changing the name of an existing record
+        old_name = self.record1.name
         new_name = old_name[:-1] + "added_string"
-        data = self.records[0].to_dict()
-        data["name"] = new_name
-        json_data = json.dumps({"force": False, "record": data})
-        response = self.client.post(path=url, data=json_data, secure=False, content_type="application/json")
-        updated_record = ITSystemRecord.objects.get(system_id=data["system_id"])
+
+        url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
+        response = self.client.post(path=url, data=json.dumps({"name": new_name}), secure=False, content_type="application/json")
+
+        self.record1 = ITSystemRecord.objects.get(pk=self.record1.pk)
+        self.assertContains(response, status_code=200, text=new_name)
+        self.assertNotContains(response, old_name)
+        self.assertEqual(self.record1.name, new_name)
+
+        # Tests changing an FK field of an existing record
+        old_division = self.record1.division.name
+        new_division = self.record2.division.name
+
+        url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
+        response = self.client.post(path=url, data=json.dumps({"division": new_division}), secure=False, content_type="application/json")
+
+        self.record1 = ITSystemRecord.objects.get(pk=self.record1.pk)
+        self.assertContains(response, status_code=200, text=new_division)
+        self.assertNotContains(response, old_division)
+        self.assertEqual(self.record1.division.name, new_division)
+
+        # Tests changing the name of a record that doesn't exist
+        old_name = self.record1.name
+        new_name = old_name + "ADDED_STRING"
+
+        url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id + "ADDED_STRING"})
+        response = self.client.post(path=url, data=json.dumps({"name": new_name}), secure=False, content_type="application/json")
+
+        self.record1 = ITSystemRecord.objects.get(pk=self.record1.pk)
+        self.assertContains(response=response, status_code=400, text="Can't find system ")
+        self.assertEqual(self.record1.name, old_name)
+
+        # Tests changing an FK field of an existing record to one that doesn't exist
+        old_division = self.record1.division.name
+        fake_division = self.record1.division.name + "ADDED_STRING"
+
+        url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
+        response = self.client.post(path=url, data=json.dumps({"division": fake_division}), secure=False, content_type="application/json")
+
+        self.record1 = ITSystemRecord.objects.get(pk=self.record1.pk)
+        self.assertContains(response, status_code=400, text="Invalid field value in choice field")
+        self.assertEqual(self.record1.division.name, old_division)
+
+        # Tests that attempting to change a field that doesn't exist doesn't change the record at all
+        url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
+        response = self.client.post(path=url, data=json.dumps({"fake_field": "fake_value"}), secure=False, content_type="application/json")
+
+        self.record1 = ITSystemRecord.objects.get(pk=self.record1.pk)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, new_name)
-        self.assertEqual(updated_record.name, new_name)
+        self.assert_response_contains_record(response, self.record1)
 
     def test_contact_replace(self):
         """Test the ITSystemRecordAPIResource replace contact functionality"""
@@ -92,3 +142,48 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
         self.assertEqual(target1.technology_custodian.email, new_contact)
         self.assertEqual(target1.information_custodian.email, new_contact)
         self.assertEqual(target2.business_service_owner.email, new_contact)
+
+        # Tests replacing a user that doesn't exist
+        existing_user = target2.business_service_owner.email
+        fake_user = existing_user[:-2] + "ADDED_STRING"
+
+        url = reverse("it_system_api_resource")
+        json_data = json.dumps({"new_contact": fake_user, "old_contact": existing_user})
+        response = self.client.post(path=url, data=json_data, secure=False, content_type="application/json")
+
+        self.assertContains(response=response, status_code=400, text="Invalid user email")
+
+        # Tests replacing a user that exists but isn't used anywhere
+        unused_user = self.user_permanent.email
+        existing_contact = self.record1.business_service_owner.email
+
+        url = reverse("it_system_api_resource")
+        json_data = json.dumps({"new_contact": existing_contact, "old_contact": unused_user})
+        response = self.client.post(path=url, data=json_data, secure=False, content_type="application/json")
+        self.assertContains(response=response, status_code=200, text="[]")
+
+    def assert_response_contains_record(self, response, record):
+        """Tests that the inputted record exists in the response"""
+        self.assertContains(response, record.system_id)
+        self.assertContains(response, record.name)
+        self.assertContains(response, record.status.name)
+        self.assertContains(response, record.division.name)
+        self.assertContains(response, record.business_service_owner.email)
+        self.assertContains(response, record.system_owner.email)
+        self.assertContains(response, record.technology_custodian.email)
+        self.assertContains(response, record.information_custodian.email)
+        self.assertContains(response, record.seasonality.name)
+        self.assertContains(response, record.availability.name)
+        self.assertContains(response, record.sensitivity.name)
+        self.assertContains(response, record.system_type.name)
+        self.assertContains(response, record.description.replace("\n", "\\n"))
+
+    def assert_response_does_not_contain_record(self, response, record):
+        """Tests that the inputted record does not exist in the record. Doesn't include non-unique FK values, as they can appear in other records"""
+        self.assertNotContains(response, record.system_id)
+        self.assertNotContains(response, record.name)
+        self.assertNotContains(response, record.business_service_owner.email)
+        self.assertNotContains(response, record.system_owner.email)
+        self.assertNotContains(response, record.technology_custodian.email)
+        self.assertNotContains(response, record.information_custodian.email)
+        self.assertNotContains(response, record.description.replace("\n", "\\n"))
