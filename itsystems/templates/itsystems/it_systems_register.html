@@ -275,7 +275,9 @@
                                 </p>
                             </td>
                             <td>
-                                <a href="{{ obj.file_store_link |default_if_none:"" }}">{{obj.file_store_link | default_if_none:""}}</a>
+                                <p style = "width:50ch; overflow-wrap: break-word">
+                                    <a href="{{ obj.file_store_link |default_if_none:"" }}">{{obj.file_store_link | default_if_none:""}}</a>
+                                </p>
                             </td>
                             <td>
                                 {{obj.vital_records|default_if_none:"False"}}
