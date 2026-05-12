@@ -13,7 +13,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from itassets.utils import get_next_pages, get_previous_pages
 
-from .models import ITSystemRecord, Status, Division, Seasonality, Availability, Sensitivity, SystemType
+from .models import ITSystemRecord, Status, Division, Seasonality, Availability, Sensitivity, SystemType, DepartmentUser
 from .utils import export_csv, import_csv, retrieve, replace_contact, edit_record_from_dict
 
 
@@ -37,6 +37,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["availabilities"] = Availability.objects.all()
         context["sensitivities"] = Sensitivity.objects.all()
         context["system_types"] = SystemType.objects.all()
+        context["users"] = DepartmentUser.objects.all()
 
         # Pass in any search & filtering data
         if "q" in self.request.GET:
@@ -55,7 +56,14 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
             context["sensitivity_filter"] = retrieve(Sensitivity, self.request.GET["sensitivity"])
         if "system_type" in self.request.GET:
             context["system_type_filter"] = retrieve(SystemType, self.request.GET["system_type"])
-
+        if "business_service_owner" in self.request.GET:
+            context["business_service_owner_filter"] = retrieve(DepartmentUser, self.request.GET["business_service_owner"])
+        if "system_owner" in self.request.GET:
+            context["system_owner_filter"] = retrieve(DepartmentUser, self.request.GET["system_owner"])
+        if "technology_custodian" in self.request.GET:
+            context["technology_custodian_filter"] = retrieve(DepartmentUser, self.request.GET["technology_custodian"])
+        if "information_custodian" in self.request.GET:
+            context["information_custodian_filter"] = retrieve(DepartmentUser, self.request.GET["information_custodian"])
         context["object_count"] = len(self.get_queryset())
         context["previous_pages"] = get_previous_pages(context["page_obj"])
         context["next_pages"] = get_next_pages(context["page_obj"])
@@ -79,6 +87,14 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
             queryset = queryset.filter(sensitivity__id=self.request.GET["sensitivity"])
         if self.request.GET.get("system_type"):
             queryset = queryset.filter(system_type__id=self.request.GET["system_type"])
+        if self.request.GET.get("business_service_owner"):
+            queryset = queryset.filter(business_service_owner__id=self.request.GET["business_service_owner"])
+        if self.request.GET.get("system_owner"):
+            queryset = queryset.filter(system_owner__id=self.request.GET["system_owner"])
+        if self.request.GET.get("technology_custodian"):
+            queryset = queryset.filter(technology_custodian__id=self.request.GET["technology_custodian"])
+        if self.request.GET.get("information_custodian"):
+            queryset = queryset.filter(information_custodian__id=self.request.GET["information_custodian"])
         if "q" in self.request.GET and self.request.GET["q"]:
             query_str = self.request.GET["q"]
             queryset = queryset.filter(

@@ -107,6 +107,18 @@
             {% if system_type_filter %}
                 <button type="button" class="btn btn-outline-secondary" onClick="clearField('system_type')">System Type | {{system_type_filter.name}}  ✕</button>
             {% endif %}
+            {% if business_service_owner_filter %}
+                <button type="button" class="btn btn-outline-secondary" onClick="clearField('business_service_owner')">Business Service Owner | {{business_service_owner_filter.name}}  ✕</button>
+            {% endif %}
+            {% if system_owner_filter %}
+                <button type="button" class="btn btn-outline-secondary" onClick="clearField('system_owner')">System Owner | {{system_owner_filter.name}}  ✕</button>
+            {% endif %}
+            {% if technology_custodian_filter %}
+                <button type="button" class="btn btn-outline-secondary" onClick="clearField('technology_custodian')">Technology Custodian | {{technology_custodian_filter.name}}  ✕</button>
+            {% endif %}
+            {% if information_custodian_filter %}
+                <button type="button" class="btn btn-outline-secondary" onClick="clearField('information_custodian')">Information Custodian | {{information_custodian_filter.name}}  ✕</button>
+            {% endif %}
             <script>
                 function clearField(field){
                     document.getElementById(field).value='';
@@ -146,10 +158,54 @@
                         </th>
                         <th>Description</th>
                         <th>Link</th>
-                        <th>Business Service Owner</th>
-                        <th>System Owner</th>
-                        <th>Technical Custodian</th>
-                        <th>Information Custodian</th>
+                        <th>Business Service Owner
+                            <select id="business_service_owner" name="business_service_owner" form="filters" onchange="this.form.submit()">
+                                <option></option>
+                                {% for option in users%}
+                                    {% if option.id == business_service_owner_filter.id %}
+                                        <option selected="selected" value = {{option.id}}>{{option.email}}</option>
+                                    {% else %}
+                                        <option value = {{option.id}}>{{option.email}}</option>
+                                    {% endif %}
+                                {% endfor%}
+                            </select>
+                        </th>
+                        <th>System Owner
+                            <select id="system_owner" name="system_owner" form="filters" onchange="this.form.submit()">
+                                <option></option>
+                                {% for option in users%}
+                                    {% if option.id == system_owner_filter.id %}
+                                        <option selected="selected" value = {{option.id}}>{{option.email}}</option>
+                                    {% else %}
+                                        <option value = {{option.id}}>{{option.email}}</option>
+                                    {% endif %}
+                                {% endfor%}
+                            </select>
+                        </th>
+                        <th>Technology Custodian
+                            <select id="technology_custodian" name="technology_custodian" form="filters" onchange="this.form.submit()">
+                                <option></option>
+                                {% for option in users%}
+                                    {% if option.id == technology_custodian_filter.id %}
+                                        <option selected="selected" value = {{option.id}}>{{option.email}}</option>
+                                    {% else %}
+                                        <option value = {{option.id}}>{{option.email}}</option>
+                                    {% endif %}
+                                {% endfor%}
+                            </select>
+                        </th>
+                        <th>Information Custodian
+                            <select id="information_custodian" name="information_custodian" form="filters" onchange="this.form.submit()">
+                                <option></option>
+                                {% for option in users%}
+                                    {% if option.id == information_custodian_filter.id %}
+                                        <option selected="selected" value = {{option.id}}>{{option.email}}</option>
+                                    {% else %}
+                                        <option value = {{option.id}}>{{option.email}}</option>
+                                    {% endif %}
+                                {% endfor%}
+                            </select>
+                        </th>
                         <th>Seasonality
                             <select id="seasonality" name="seasonality" form="filters" onchange="this.form.submit()">
                                 <option></option>
