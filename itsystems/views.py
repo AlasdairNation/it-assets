@@ -64,6 +64,7 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
             context["technology_custodian_filter"] = retrieve(DepartmentUser, self.request.GET["technology_custodian"])
         if "information_custodian" in self.request.GET:
             context["information_custodian_filter"] = retrieve(DepartmentUser, self.request.GET["information_custodian"])
+            
         context["object_count"] = len(self.get_queryset())
         context["previous_pages"] = get_previous_pages(context["page_obj"])
         context["next_pages"] = get_next_pages(context["page_obj"])
