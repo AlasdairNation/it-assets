@@ -395,29 +395,34 @@ class ITSystemRecord(models.Model):
         """
         return self._meta.get_field(self.__strip_field__(field)).verbose_name
 
-    def __get_choice_fk(self, text, ChoiceClass, force=False, force_failures=[]):
+    def __get_choice_fk(self, text, ChoiceClass, force=False, force_failures=None):
         """
         Retrieves a division id from the inputted text value.
         """
         fk = None
+
         try:
             if text:
                 fk = ChoiceClass.objects.get(name=text)
-        except Exception:
+        except ChoiceClass.DoesNotExist:
             message = str(ChoiceClass._meta.verbose_name) + ": Can't find option '" + text + "'."
-            if force:
+            if force and force_failures:
                 force_failures.append(message)
             else:
                 raise ChoiceClass.DoesNotExist(message)
         return fk
 
-    def __get_user_fk(self, email, field, force=False, force_failures=[]):
+    def __get_user_fk(self, email, field, force=False, force_failures=None):
         """
         Retrieves a user id from an inputted email or display name.
         """
         user = None
         suffix = "@dbca.wa.gov.au"
         email_query = None
+
+        if not force_failures:
+            force_failures = []
+
         try:
             if email:
                 if email.endswith(suffix):
@@ -427,9 +432,9 @@ class ITSystemRecord(models.Model):
                     email_query = names[0].lower() + "." + "".join(names[1:]).lower() + suffix
             if email_query:
                 user = DepartmentUser.objects.get(email=email_query)
-        except Exception:
+        except DepartmentUser.DoesNotExist:
             message = field + ": Can't find user '" + email + "'."
-            if email and force:
+            if email and force and force_failures:
                 force_failures.append(message)
             elif email and not force:
                 raise DepartmentUser.DoesNotExist(message)

@@ -130,7 +130,7 @@ def retrieve(cls, id):
     return model
 
 
-def replace_contact(old_contact, new_contact):
+def replace_contact(old_contact, new_contact, user):
     """
     Replaces all instances of one contact in the IT Systems Register with another.
     It then returns a list of changes.
@@ -150,25 +150,36 @@ def replace_contact(old_contact, new_contact):
     if old_contact_fk and new_contact_fk:
         for record in records:
             record_changes = []
-            if record.business_service_owner == old_contact_fk:
-                record.business_service_owner = new_contact_fk
-                record_changes.append("business_service_owner")
-            if record.system_owner == old_contact_fk:
-                record.system_owner = new_contact_fk
-                record_changes.append("system_owner")
-            if record.technology_custodian == old_contact_fk:
-                record.technology_custodian = new_contact_fk
-                record_changes.append("technology_custodian")
-            if record.information_custodian == old_contact_fk:
-                record.information_custodian = new_contact_fk
-                record_changes.append("information_custodian")
+            with reversion.create_revision():
+                if record.business_service_owner == old_contact_fk:
+                    record.business_service_owner = new_contact_fk
+                    record_changes.append("business_service_owner")
+                if record.system_owner == old_contact_fk:
+                    record.system_owner = new_contact_fk
+                    record_changes.append("system_owner")
+                if record.technology_custodian == old_contact_fk:
+                    record.technology_custodian = new_contact_fk
+                    record_changes.append("technology_custodian")
+                if record.information_custodian == old_contact_fk:
+                    record.information_custodian = new_contact_fk
+                    record_changes.append("information_custodian")
 
-            if len(record_changes) > 0:
-                try:
-                    record.save()
-                    changes.append({"record": record.system_id, "success": True, "changes": record_changes})
-                except Exception as e:
-                    changes.append({"record": record.system_id, "success": False, "changes": str(e)})
+                if len(record_changes) > 0:
+                    try:
+                        record.save()
+                        changes.append({"record": record.system_id, "success": True, "changes": record_changes})
+
+                        # Create comment for version history
+                        change_log = "Changed via web request: "
+                        for field in record_changes:
+                            change_log += record.__display_field__(field) + ", "
+                        comment = change_log[:-2] + "."
+
+                        # Create version history entry
+                        reversion.set_user(user)
+                        reversion.set_comment(comment)
+                    except Exception as e:
+                        changes.append({"record": record.system_id, "success": False, "changes": str(e)})
     else:
         error_msg = "Failed to find user for value(s):"
         if not old_contact_fk:
@@ -179,13 +190,29 @@ def replace_contact(old_contact, new_contact):
     return changes
 
 
-def edit_record_from_dict(record, dict):
+def edit_record_from_dict(record, dict, user):
     """updates record with new values passed in from a dictionary, returning the updated record values as a dictionary"""
-    updated_record = record.to_dict()
-    updated_record.update(dict)
-    record.set_from_dict(dict=updated_record, plain_text=True, force=False)
-    record.save()
-    return record.to_dict()
+    with reversion.create_revision():
+        # updated record
+        updated_record = record.to_dict()
+        updated_record.update(dict)
+        record.set_from_dict(dict=updated_record, plain_text=True, force=False)
+        record.modified_by = user.email
+        record.save()
+
+        updated_dict = record.to_dict()
+
+        # Create comment for version history
+        change_log = "Changed via web request: "
+        for field in dict.keys():
+            if field in updated_dict.keys():
+                change_log += record.__display_field__(field) + ", "
+        comment = change_log[:-2] + "."
+
+        # Create version history entry
+        reversion.set_user(user)
+        reversion.set_comment(comment)
+    return updated_dict
 
 
 def __validate_csv(csv_file):

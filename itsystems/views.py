@@ -141,44 +141,36 @@ class ITSystemRecordAPIResource(View):
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         response = None
-        try:
-            queryset = (
-                ITSystemRecord.objects.all()
-                .select_related("status", "division", "seasonality", "availability", "sensitivity", "system_type")
-                .order_by("system_id")
-            )
+        queryset = (
+            ITSystemRecord.objects.all()
+            .select_related("status", "division", "seasonality", "availability", "sensitivity", "system_type")
+            .order_by("system_id")
+        )
 
-            # Queryset filtering.
-            if "system_id" in kwargs and kwargs["system_id"]:
-                queryset = queryset.filter(system_id=kwargs["system_id"])
+        # Queryset filtering.
+        if "system_id" in kwargs and kwargs["system_id"]:
+            queryset = queryset.filter(system_id=kwargs["system_id"])
 
-            register = [record.to_dict() for record in queryset]
+        register = [record.to_dict() for record in queryset]
 
-            response = JsonResponse(register, safe=False)
+        response = JsonResponse(register, safe=False)
 
-        except UnboundLocalError as e:
-            if "system_id" in kwargs and kwargs["system_id"]:
-                response = HttpResponseBadRequest("Can't find system " + kwargs["system_id"] + ": " + str(e))
-            else:
-                response = HttpResponseBadRequest(str(e))
         return response
 
-    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def post(self, request, *args, **kwargs):
         """An API view that allows users to update a record or a contact"""
 
         response = None
         
         if "system_id" in kwargs and kwargs["system_id"]:  # Allow filtering by object system_id.
-            system_id = system_id = kwargs["system_id"]
             try:
-                old_record = ITSystemRecord.objects.get(system_id=system_id)
+                old_record = ITSystemRecord.objects.get(system_id=kwargs["system_id"])
                 data = dict(json.loads(request.body))
-                changes = edit_record_from_dict(record=old_record, dict=data)
-                response = JsonResponse(data=old_record.to_dict(), safe=False)
+                changes = edit_record_from_dict(record=old_record, dict=data, user=request.user)
+                response = JsonResponse(data=changes, safe=False)
 
             except ITSystemRecord.DoesNotExist:
-                response = HttpResponseBadRequest("Can't find system " + system_id)
+                response = HttpResponseBadRequest("Can't find system " + kwargs["system_id"])
             except json.JSONDecodeError:
                 response = HttpResponseBadRequest("JSON data is invalid")
             except ObjectDoesNotExist as e:
@@ -191,7 +183,7 @@ class ITSystemRecordAPIResource(View):
         else:
             try:
                 data = dict(json.loads(request.body))
-                changes = replace_contact(old_contact=data["old_contact"], new_contact=data["new_contact"])
+                changes = replace_contact(old_contact=data["old_contact"], new_contact=data["new_contact"], user=request.user)
                 response = JsonResponse(changes, safe=False)
             except json.JSONDecodeError:
                 response = HttpResponseBadRequest("JSON data is invalid")
