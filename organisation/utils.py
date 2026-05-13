@@ -364,7 +364,7 @@ def ms_graph_site_storage_summary(ds: Optional[str] = None, token: Optional[Dict
     upload_blob(in_file=f, container="analytics", blob=blob_name)
 
 
-def ms_graph_list_signins_user(azure_guid: str, top: int = 5, token: dict | None = None) -> List[Dict]:
+def ms_graph_list_signins_user(azure_guid: str, top: int = 5, token: dict | None = None) -> List[Dict] | None:
     """Query the Microsoft Graph API for most-recent interactive, successful sign-in events for an Entra ID user account.
     Reference: https://learn.microsoft.com/en-us/graph/api/resources/signin
     """
@@ -404,7 +404,10 @@ def parse_windows_ts(ts: str) -> datetime | None:
     """
     try:
         match = re.search("(?P<timestamp>[0-9]+)", ts)
-        return datetime.fromtimestamp(int(match.group()) / 1000)  # POSIX timestamp is in ms.
+        if match:
+            return datetime.fromtimestamp(int(match.group()) / 1000)  # POSIX timestamp is in ms.
+        else:
+            return None
     except:
         return None
 

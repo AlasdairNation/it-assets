@@ -29,15 +29,17 @@ def _json_2_html(value):
 text_readonly_widget = ReadonlyWidget(lambda value: "<pre>{}</pre>".format(value) if value else "")
 
 textarea_readonly_widget = ReadonlyWidget(
-    lambda value: '<table><tr><td style="border: 1px solid gray"><pre>{}</pre></td></tr></table>'.format(value)
-    if value
-    else '<table style="width:80%;height:50px"><tr><td style="border: 1px solid gray"></td></tr></table>'
+    lambda value: (
+        '<table><tr><td style="border: 1px solid gray"><pre>{}</pre></td></tr></table>'.format(value)
+        if value
+        else '<table style="width:80%;height:50px"><tr><td style="border: 1px solid gray"></td></tr></table>'
+    )
 )
 
 json_readonly_widget = ReadonlyWidget(_json_2_html)
 
 boolean_readonly_widget = ReadonlyWidget(
-    lambda value: '<img src="/static/admin/img/icon-yes.svg" alt="True">'
-    if value
-    else '<img src="/static/admin/img/icon-no.svg" alt="True">'
+    lambda value: (
+        '<img src="/static/admin/img/icon-yes.svg" alt="True">' if value else '<img src="/static/admin/img/icon-no.svg" alt="True">'
+    )
 )

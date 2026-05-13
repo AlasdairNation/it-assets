@@ -3,6 +3,7 @@ import random
 from datetime import date, timedelta
 from uuid import uuid4
 
+from django.contrib.auth.models import User
 from django.core import mail
 from django.test import TestCase
 from mixer.backend.django import mixer
@@ -26,6 +27,8 @@ class AscenderTestCase(TestCase):
     """Test functions related to the import of department user data from Ascender."""
 
     def setUp(self):
+        # Generate a Django user for endpoint responses.
+        self.user = User.objects.create_user(username="admin", email="admin@dbca.wa.gov.au", password="pass")
         loc_desc = "1 Fake Street, DULLSVILLE"
         self.location = mixer.blend(
             Location,

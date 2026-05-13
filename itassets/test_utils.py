@@ -267,10 +267,10 @@ class HumaniseBytesTestCase(TestCase):
         self.assertEqual(humanise_bytes(1024 * 1024), "1.0 MB")
 
     def test_gigabytes(self):
-        self.assertEqual(humanise_bytes(1024 ** 3), "1.0 GB")
+        self.assertEqual(humanise_bytes(1024**3), "1.0 GB")
 
     def test_terabytes(self):
-        self.assertEqual(humanise_bytes(1024 ** 4), "1.0 TB")
+        self.assertEqual(humanise_bytes(1024**4), "1.0 TB")
 
     def test_fractional(self):
         result = humanise_bytes(1536)  # 1.5 KB

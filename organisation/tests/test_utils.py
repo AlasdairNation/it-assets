@@ -251,7 +251,9 @@ class MsGraphListUsersTestCase(TestCase):
 
     @patch("organisation.utils.requests.get")
     def test_licensed_filter(self, mock_get):
-        licensed_user = make_graph_user(id="guid-001", mail="a@example.com", userPrincipalName="a@example.com", assignedLicenses=[{"skuId": "sku-1"}])
+        licensed_user = make_graph_user(
+            id="guid-001", mail="a@example.com", userPrincipalName="a@example.com", assignedLicenses=[{"skuId": "sku-1"}]
+        )
         unlicensed_user = make_graph_user(id="guid-002", mail="b@example.com", userPrincipalName="b@example.com", assignedLicenses=[])
         mock_get.return_value = mock_response({"value": [licensed_user, unlicensed_user]})
 
@@ -262,7 +264,9 @@ class MsGraphListUsersTestCase(TestCase):
 
     @patch("organisation.utils.requests.get")
     def test_no_filter_returns_all(self, mock_get):
-        licensed_user = make_graph_user(id="guid-001", mail="a@example.com", userPrincipalName="a@example.com", assignedLicenses=[{"skuId": "sku-1"}])
+        licensed_user = make_graph_user(
+            id="guid-001", mail="a@example.com", userPrincipalName="a@example.com", assignedLicenses=[{"skuId": "sku-1"}]
+        )
         unlicensed_user = make_graph_user(id="guid-002", mail="b@example.com", userPrincipalName="b@example.com", assignedLicenses=[])
         mock_get.return_value = mock_response({"value": [licensed_user, unlicensed_user]})
 
