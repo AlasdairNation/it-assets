@@ -1,5 +1,6 @@
 {% extends "base_itassets.html" %}
 {% load static %}
+{% load itsystemstags %}
 {% block extra_style %}
     {{ block.super }}
     <style>
@@ -77,36 +78,15 @@
                         </div>
                     </form>
                 </div>
-                {% comment %} {% if object_list %} {% endcomment %}
                     <!-- Pagination -->
                     <div class="col">
-                        <div class="d-flex justify-content-end">{% include "pagination.html" %}</div>
+                        <div class="d-flex justify-content-end">{% include "itsystems/register_pagination.html" %}</div>
                     </div>
-                {% comment %} {% endif %} {% endcomment %}
             </div>
         </div>
         <div style="padding:10px">
-            {% if status_filter %}
-                <button type="button" class="btn btn-outline-secondary" onClick="clearField('status')">Status | {{status_filter.name}}  ✕</button>
-            {% endif %}
-            {% if division_filter %}
-                <button type="button" class="btn btn-outline-secondary" onClick="clearField('division')">Division | {{division_filter.name}}  ✕</button>
-            {% endif %}
-            {% if seasonality_filter %}
-                <button type="button" class="btn btn-outline-secondary" onClick="clearField('seasonality')">Seasonality | {{seasonality_filter.name}}  ✕</button>
-            {% endif %}
-            {% if availability_filter %}
-                <button type="button" class="btn btn-outline-secondary" onClick="clearField('availability')">Availability | {{availability_filter.name}}  ✕</button>
-            {% endif %}
-            {% if vital_records_filter %}
-                <button type="button" class="btn btn-outline-secondary" onClick="clearField('vital_records')">Vital Records | {{vital_records_filter}}  ✕</button>
-            {% endif %}
-            {% if sensitivity_filter %}
-                <button type="button" class="btn btn-outline-secondary" onClick="clearField('sensitivity')">Sensitivity | {{sensitivity_filter.name}}  ✕</button>
-            {% endif %}
-            {% if system_type_filter %}
-                <button type="button" class="btn btn-outline-secondary" onClick="clearField('system_type')">System Type | {{system_type_filter.name}}  ✕</button>
-            {% endif %}
+            {% renderButtons %}
+            {% endrenderButtons %}
             <script>
                 function clearField(field){
                     document.getElementById(field).value='';
@@ -121,63 +101,45 @@
                         <th id = "sticky-col">System ID - Name</th>
                         <th>
                             Status
-                            <select id="status" name="status" form="filters" onchange="this.form.submit()">
-                                <option></option>
-                                {% for option in statuses%}
-                                    {% if option.id == status_filter.id %}
-                                        <option selected="selected" value = {{option.id}}>{{option.name}}</option>
-                                    {% else %}
-                                        <option value = {{option.id}}>{{option.name}}</option>
-                                    {% endif %}
-                                {% endfor%}
-                            </select>
+                            {% renderSelect id="status" filter=status_filter list_name="statuses" %}
+                            {% endrenderSelect %}
                         </th>
                         <th>Division
-                            <select id="division" name="division" form="filters" onchange="this.form.submit()">
-                                <option></option>
-                                {% for option in divisions%}
-                                    {% if option.id == division_filter.id %}
-                                        <option selected="selected" value = {{option.id}}>{{option.name}}</option>
-                                    {% else %}
-                                        <option value = {{option.id}}>{{option.name}}</option>
-                                    {% endif %}
-                                {% endfor%}
-                            </select>
+                            {% renderSelect id="division" filter=division_filter list_name="divisions" %}
+                            {% endrenderSelect %}
                         </th>
-                        <th>Business Service Owner</th>
-                        <th>System Owner</th>
-                        <th>Technical Custodian</th>
-                        <th>Information Custodian</th>
+                        <th>Description</th>
+                        <th>Link</th>
+                        <th>Business Service Owner
+                            {% renderSelect id="business_service_owner" filter=business_service_owner_filter list_name="users" %}
+                            {% endrenderSelect %}
+                        </th>
+                        <th>System Owner
+                            {% renderSelect id="system_owner" filter=system_owner_filter list_name="users" %}
+                            {% endrenderSelect %}
+                        </th>
+                        <th>Technology Custodian
+                            {% renderSelect id="technology_custodian" filter=technology_custodian_filter list_name="users" %}
+                            {% endrenderSelect %}
+                        </th>
+                        <th>Information Custodian
+                            {% renderSelect id="information_custodian" filter=information_custodian_filter list_name="users" %}
+                            {% endrenderSelect %}
+                        </th>
                         <th>Seasonality
-                            <select id="seasonality" name="seasonality" form="filters" onchange="this.form.submit()">
-                                <option></option>
-                                {% for option in seasonalities%}
-                                    {% if option.id == seasonality_filter.id %}
-                                        <option selected="selected" value = {{option.id}}>{{option.name}}</option>
-                                    {% else %}
-                                        <option value = {{option.id}}>{{option.name}}</option>
-                                    {% endif %}
-                                {% endfor%}
-                            </select>
+                            {% renderSelect id="seasonality" filter=seasonality_filter list_name="seasonalities" %}
+                            {% endrenderSelect %}
                         </th>
                         <th>Availability
-                            <select id="availability" name="availability" form="filters" onchange="this.form.submit()">
-                                <option></option>
-                                {% for option in availabilities%}
-                                    {% if option.id == availability_filter.id %}
-                                        <option selected="selected" value = {{option.id}}>{{option.name}}</option>
-                                    {% else %}
-                                        <option value = {{option.id}}>{{option.name}}</option>
-                                    {% endif %}
-                                {% endfor%}
-                            </select>
+                            {% renderSelect id="availability" filter=availability_filter list_name="availabilities" %}
+                            {% endrenderSelect %}
                         </th>
-                        <th>Link</th>
-                        <th>Description</th>
                         <th>File Store Link</th>
                         <th>Vital Records
                             <select id="vital_records" name="vital_records" form="filters" onchange="this.form.submit()">
-                                <option></option>
+                                {% if vital_records_filter == null %}
+                                    <option disabled selected value></option>
+                                {% endif %}
                                 {% if vital_records_filter == "True" %}
                                     <option selected="selected">True</option>
                                     <option>False</option>
@@ -194,28 +156,12 @@
                         <th>Retention and Disposal</th>
                         <th>UBCS</th>
                         <th>Sensitivity
-                            <select id="sensitivity" name="sensitivity" form="filters" onchange="this.form.submit()">
-                                <option></option>
-                                {% for option in sensitivities%}
-                                    {% if option.id == sensitivity_filter.id %}
-                                        <option selected="selected" value = {{option.id}}>{{option.name}}</option>
-                                    {% else %}
-                                        <option value = {{option.id}}>{{option.name}}</option>
-                                    {% endif %}
-                                {% endfor%}
-                            </select>
+                            {% renderSelect id="sensitivity" filter=sensitivity_filter list_name="sensitivities" %}
+                            {% endrenderSelect %}
                         </th>
                         <th>System Type
-                            <select id="system_type" name="system_type" form="filters" onchange="this.form.submit()">
-                                <option></option>
-                                {% for option in system_types%}
-                                    {% if option.id == system_type_filter.id %}
-                                        <option selected="selected" value = {{option.id}}>{{option.name}}</option>
-                                    {% else %}
-                                        <option value = {{option.id}}>{{option.name}}</option>
-                                    {% endif %}
-                                {% endfor%}
-                            </select>
+                            {% renderSelect id="system_type" filter=system_type_filter list_name="system_types" %}
+                            {% endrenderSelect %}
                         </th>
                     </tr>
                 </thead>
@@ -234,6 +180,14 @@
                                 <p style = "width:40ch">
                                     {{ obj.division}}
                                 </p>
+                            </td>
+                            <td>
+                                <p style = "width:50ch">
+                                    {{obj.description|default_if_none:""}}
+                                </p>
+                            </td>
+                            <td>
+                                <a href="{{ obj.link |default_if_none:"" }}">{{obj.link | default_if_none:""}}</a>
                             </td>
                             <td>
                                 {{ obj.business_service_owner.name |default_if_none:"" }}
@@ -267,15 +221,9 @@
                                 {{obj.availability|default_if_none:""}}
                             </td>
                             <td>
-                                <a href="{{ obj.link |default_if_none:"" }}">{{obj.link | default_if_none:""}}</a>
-                            </td>
-                            <td>
-                                <p style = "width:50ch">
-                                    {{obj.description|default_if_none:""}}
+                                <p style = "width:50ch; overflow-wrap: break-word">
+                                    <a href="{{ obj.file_store_link |default_if_none:"" }}">{{obj.file_store_link | default_if_none:""}}</a>
                                 </p>
-                            </td>
-                            <td>
-                                <a href="{{ obj.file_store_link |default_if_none:"" }}">{{obj.file_store_link | default_if_none:""}}</a>
                             </td>
                             <td>
                                 {{obj.vital_records|default_if_none:"False"}}

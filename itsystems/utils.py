@@ -15,27 +15,7 @@ def export_csv(response):
 
     records = ITSystemRecord.objects.all()
     for record in records:
-        record_vals = [
-            record.system_id,
-            record.name,
-            record.status.name if record.status else "",
-            record.division.name if record.division else "",
-            record.business_service_owner.email if record.business_service_owner else "",
-            record.system_owner.email if record.system_owner else "",
-            record.technology_custodian.email if record.technology_custodian else "",
-            record.information_custodian.email if record.information_custodian else "",
-            record.seasonality.name if record.seasonality else "",
-            record.availability.name if record.availability else "",
-            record.link,
-            record.description,
-            record.file_store_link,
-            record.vital_records,
-            record.disposal_authority,
-            record.retention_and_disposal,
-            record.ubcs,
-            record.sensitivity.name if record.sensitivity else "",
-            record.system_type.name if record.system_type else "",
-        ]
+        record_vals = record.to_array()
         writer.writerow(record_vals)
 
 
@@ -230,8 +210,10 @@ def __validate_csv(csv_file):
             raw_text = csv_file.read().decode(encoding="utf-8", errors="replace")
             csv_headers = raw_text.splitlines()[0].split(",")
             model_fields = __get_model_fields()
-            # Checks that csv has the correct headers
-            if all(csv == model.name for csv, model in zip(csv_headers, model_fields)):
+            all_headers_present = True
+            for field in model_fields:
+                all_headers_present = field.name in csv_headers and all_headers_present
+            if all_headers_present:
                 valid = True
                 msg = "CSV is Valid"
             else:
@@ -241,7 +223,6 @@ def __validate_csv(csv_file):
     else:
         msg = "The selected file isn't a CSV"
     return {"valid": valid, "message": msg, "raw_text": raw_text}
-
 
 def __get_model_fields():
     """
