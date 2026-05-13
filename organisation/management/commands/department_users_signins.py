@@ -19,7 +19,7 @@ class Command(BaseCommand):
             action="store",
             default=5,
             type=int,
-            help="Query sign-ins for the previous number of minutes (default 5)",
+            help="Query successful interactive sign-ins for the previous number of minutes (default 5)",
             dest="minutes",
         )
         parser.add_argument(
@@ -45,7 +45,7 @@ class Command(BaseCommand):
         ts = t.strftime("%Y-%m-%dT%H:%M:%SZ")
         params = {
             "$orderby": "createdDateTime desc",
-            "$filter": f"(isInteractive eq true and createdDateTime ge {ts})",
+            "$filter": f"(isInteractive eq true and status/errorCode eq 0 and createdDateTime ge {ts})",
         }
         # Reference: https://learn.microsoft.com/en-us/graph/api/signin-list
         url = "https://graph.microsoft.com/v1.0/auditLogs/signIns"
