@@ -2,6 +2,7 @@ import csv
 import io
 import reversion
 from .models import ITSystemRecord
+from .models import DepartmentUser
 
 
 def export_csv(response):
@@ -44,6 +45,7 @@ def import_csv(request):
     This function returns a dictionary containing the validation results and 3 lists respectively containing details of records created, records updated, and records that failed to process.
     """
     csv_file = request.FILES["csv_file"]
+    force = request.POST["force"] == "True"
     update_list = []
     create_list = []
     failed_list = []
@@ -53,6 +55,7 @@ def import_csv(request):
         raw_text = validate_results["raw_text"]
         record_list = list(csv.DictReader(io.StringIO(raw_text)))
         for record in record_list:
+            force_failures = []
             # Search for existing record in database
             try:
                 found_record = ITSystemRecord.objects.get(system_id=record["system_id"])
@@ -62,14 +65,14 @@ def import_csv(request):
             try:
                 # Populate new record with data
                 new_record = ITSystemRecord()
-                new_record.set_from_dict(record)
+                force_failures = new_record.set_from_dict(dict=record, plain_text=True, force=force)
 
                 if found_record:
                     changes = found_record.compare(new_record)
                     if len(changes) > 0:
                         with reversion.create_revision():
                             # Update Record
-                            found_record.set_from_dict(record)
+                            force_failures = found_record.set_from_dict(dict=record, plain_text=True, force=force)
                             found_record.modified_by = request.user.email
                             found_record.save()
 
@@ -96,6 +99,11 @@ def import_csv(request):
                         reversion.set_comment("Created via CSV import.")
                     changes = new_record.compare(None)
                     create_list.append({"record": new_record.system_id_name, "changes": changes})
+
+                if len(force_failures) > 0:
+                    error_message = "Partial Failure(s): " + "\r\n".join(force_failures)
+                    failed_list.append({"record": record["system_id"], "changes": error_message})
+
             except Exception as e:
                 if hasattr(e, "message"):
                     error_message = e.message
@@ -120,6 +128,64 @@ def retrieve(cls, id):
     except Exception:
         model = None
     return model
+
+
+def replace_contact(old_contact, new_contact):
+    """
+    Replaces all instances of one contact in the IT Systems Register with another.
+    It then returns a list of changes.
+    """
+    records = ITSystemRecord.objects.all()
+    changes = []
+
+    try:
+        old_contact_fk = DepartmentUser.objects.get(email=old_contact)
+    except DepartmentUser.DoesNotExist:
+        old_contact_fk = None
+    try:
+        new_contact_fk = DepartmentUser.objects.get(email=new_contact)
+    except DepartmentUser.DoesNotExist:
+        new_contact_fk = None
+
+    if old_contact_fk and new_contact_fk:
+        for record in records:
+            record_changes = []
+            if record.business_service_owner == old_contact_fk:
+                record.business_service_owner = new_contact_fk
+                record_changes.append("business_service_owner")
+            if record.system_owner == old_contact_fk:
+                record.system_owner = new_contact_fk
+                record_changes.append("system_owner")
+            if record.technology_custodian == old_contact_fk:
+                record.technology_custodian = new_contact_fk
+                record_changes.append("technology_custodian")
+            if record.information_custodian == old_contact_fk:
+                record.information_custodian = new_contact_fk
+                record_changes.append("information_custodian")
+
+            if len(record_changes) > 0:
+                try:
+                    record.save()
+                    changes.append({"record": record.system_id, "success": True, "changes": record_changes})
+                except Exception as e:
+                    changes.append({"record": record.system_id, "success": False, "changes": str(e)})
+    else:
+        error_msg = "Failed to find user for value(s):"
+        if not old_contact_fk:
+            error_msg += " old_contact - '" + old_contact + "'"
+        if not new_contact_fk:
+            error_msg += " new_contact - '" + new_contact + "'"
+        raise DepartmentUser.DoesNotExist(error_msg)
+    return changes
+
+
+def edit_record_from_dict(record, dict):
+    """updates record with new values passed in from a dictionary, returning the updated record values as a dictionary"""
+    updated_record = record.to_dict()
+    updated_record.update(dict)
+    record.set_from_dict(dict=updated_record, plain_text=True, force=False)
+    record.save()
+    return record.to_dict()
 
 
 def __validate_csv(csv_file):
