@@ -771,6 +771,7 @@ def create_entra_id_user(
         "displayName": display_name,
         "userPrincipalName": email,
         "mailNickname": mail_nickname,
+        "usageLocation": "AU",
         "passwordProfile": {
             "forceChangePasswordNextSignIn": True,
             "password": password,
@@ -803,7 +804,7 @@ def create_entra_id_user(
         return
 
     # Next, update the user details with additional information.
-    sleep(1)  # Add a delay between calls to the Graph API.
+    sleep(3)  # Add a delay between calls to the Graph API.
     url = f"https://graph.microsoft.com/v1.0/users/{guid}"
     data = {
         "mail": email,
@@ -816,8 +817,6 @@ def create_entra_id_user(
         "officeLocation": location.name,
         "streetAddress": location.address,
         "state": "Western Australia",
-        "country": "Australia",
-        "usageLocation": "AU",
     }
     resp = requests.patch(url, headers=headers, json=data)
     try:
@@ -844,7 +843,7 @@ def create_entra_id_user(
         return
 
     # Next, set the user manager.
-    sleep(1)  # Add a delay between calls to the Graph API.
+    sleep(3)  # Add a delay between calls to the Graph API.
     manager_url = f"https://graph.microsoft.com/v1.0/users/{guid}/manager/$ref"
     data = {"@odata.id": f"https://graph.microsoft.com/v1.0/users/{manager.azure_guid}"}
     resp = requests.put(manager_url, headers=headers, json=data)
@@ -876,8 +875,8 @@ def create_entra_id_user(
     user_has_usage_location = False
     graph_user = None
     timestamp = datetime.now()
-    retry_delay = 1
-    for _ in range(10):
+    retry_delay = 3
+    for _ in range(15):
         try:
             graph_user = ms_graph_get_user(guid, token)
         except (requests.exceptions.HTTPError, requests.exceptions.RequestException) as exc:
@@ -888,9 +887,9 @@ def create_entra_id_user(
                 retry_after = response.headers.get("Retry-After")
                 if retry_after:
                     try:
-                        retry_delay = max(int(retry_after), 1)
+                        retry_delay = max(int(retry_after), retry_delay)
                     except (TypeError, ValueError):
-                        retry_delay = 1
+                        pass  # Just keep retry_delay value
             LOGGER.warning(
                 f"Transient error querying MS Graph API for user GUID {guid}; retrying in {retry_delay} second(s)",
                 exc_info=True,
