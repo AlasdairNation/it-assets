@@ -42,7 +42,7 @@ def renderButton(filter, field_name, verbose_name):
 def renderSelect(context, content, id, filter, list_name):
     format_kwargs = {
         "id": id,
-        "list_name": list,
+        "list_name": list_name,
         "content": content,
         "context": context,
     }
@@ -59,5 +59,5 @@ def renderSelect(context, content, id, filter, list_name):
         for option in context[list_name]:
             result += """<option value = """ +  str(option.id) + """>""" + str(option) + """</option>"""
 
-    result += "</search>"
+    result += "</select>"
     return format_html(result, **format_kwargs)

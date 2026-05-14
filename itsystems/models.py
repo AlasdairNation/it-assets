@@ -409,7 +409,7 @@ class ITSystemRecord(models.Model):
                 fk = ChoiceClass.objects.get(name=text)
         except ChoiceClass.DoesNotExist:
             message = str(ChoiceClass._meta.verbose_name) + ": Can't find option '" + text + "'."
-            if force and force_failures:
+            if force and (force_failures is not None):
                 force_failures.append(message)
             else:
                 raise ChoiceClass.DoesNotExist(message)
@@ -423,9 +423,6 @@ class ITSystemRecord(models.Model):
         suffix = "@dbca.wa.gov.au"
         email_query = None
 
-        if not force_failures:
-            force_failures = []
-
         try:
             if email:
                 if email.endswith(suffix):
@@ -437,7 +434,7 @@ class ITSystemRecord(models.Model):
                 user = DepartmentUser.objects.get(email=email_query)
         except DepartmentUser.DoesNotExist:
             message = field + ": Can't find user '" + email + "'."
-            if email and force and force_failures:
+            if email and force and (force_failures is not None):
                 force_failures.append(message)
             elif email and not force:
                 raise DepartmentUser.DoesNotExist(message)
