@@ -881,8 +881,8 @@ def create_entra_id_user(
     params = {"$select": "id,usageLocation"}
 
     while retry_delay < 300:
+        resp = requests.get(url, headers=headers, params=params)
         try:
-            resp = requests.get(url, headers=headers, params=params)
             resp.raise_for_status()
             graph_user = resp.json()
         except (requests.exceptions.HTTPError, requests.exceptions.RequestException):
@@ -953,8 +953,8 @@ def create_entra_id_user(
             "removeLicenses": [],
         }
 
+    resp = requests.post(url, headers=headers, json=data)
     try:
-        resp = requests.post(url, headers=headers, json=data)
         resp.raise_for_status()
     except:
         log = f"Create new Entra ID user failed at assign license step for {email}, ask administrator to investigate ({ascender_record})"
