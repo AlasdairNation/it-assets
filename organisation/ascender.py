@@ -885,8 +885,8 @@ def create_entra_id_user(
         try:
             resp.raise_for_status()
             graph_user = resp.json()
-        except (requests.exceptions.HTTPError, requests.exceptions.RequestException):
-            pass
+        except (requests.exceptions.HTTPError, requests.exceptions.RequestException) as exc:
+            LOGGER.warning(f"Call to {url} raised exception", exc_info=exc)
 
         timestamp = datetime.now()
 
@@ -895,10 +895,7 @@ def create_entra_id_user(
             user_has_usage_location = True
             break
         else:
-            LOGGER.warning(
-                f"Error querying MS Graph API for user {guid}; retrying in {retry_delay} seconds",
-                exc_info=True,
-            )
+            LOGGER.info(f"User {guid} usageLocation not set; retrying in {retry_delay} seconds")
             sleep(retry_delay)
             retry_delay = retry_delay * 2
 
