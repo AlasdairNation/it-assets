@@ -13,8 +13,8 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from itassets.utils import get_next_pages, get_previous_pages
 
-from .models import ITSystemRecord, Status, Division, Seasonality, Availability, Sensitivity, SystemType
-from .utils import export_csv, import_csv, retrieve, replace_contact, edit_record_from_dict
+from .models import ITSystemRecord, Status, Division, Seasonality, Availability, Sensitivity, SystemType, DepartmentUser
+from .utils import export_csv, import_csv, retrieve, replace_contact, edit_record_from_dict, get_unique_users
 
 
 class ITSystemsRegister(LoginRequiredMixin, ListView):
@@ -37,6 +37,11 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
         context["availabilities"] = Availability.objects.all()
         context["sensitivities"] = Sensitivity.objects.all()
         context["system_types"] = SystemType.objects.all()
+        context["business_service_owners"] = get_unique_users("business_service_owner")
+        context["system_owners"] = get_unique_users("system_owner")
+        context["technology_custodians"] = get_unique_users("technology_custodian")
+        context["information_custodians"] = get_unique_users("information_custodian")
+
 
         # Pass in any search & filtering data
         if "q" in self.request.GET:
@@ -55,7 +60,15 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
             context["sensitivity_filter"] = retrieve(Sensitivity, self.request.GET["sensitivity"])
         if "system_type" in self.request.GET:
             context["system_type_filter"] = retrieve(SystemType, self.request.GET["system_type"])
-
+        if "business_service_owner" in self.request.GET:
+            context["business_service_owner_filter"] = retrieve(DepartmentUser, self.request.GET["business_service_owner"])
+        if "system_owner" in self.request.GET:
+            context["system_owner_filter"] = retrieve(DepartmentUser, self.request.GET["system_owner"])
+        if "technology_custodian" in self.request.GET:
+            context["technology_custodian_filter"] = retrieve(DepartmentUser, self.request.GET["technology_custodian"])
+        if "information_custodian" in self.request.GET:
+            context["information_custodian_filter"] = retrieve(DepartmentUser, self.request.GET["information_custodian"])
+            
         context["object_count"] = len(self.get_queryset())
         context["previous_pages"] = get_previous_pages(context["page_obj"])
         context["next_pages"] = get_next_pages(context["page_obj"])
@@ -79,6 +92,14 @@ class ITSystemsRegister(LoginRequiredMixin, ListView):
             queryset = queryset.filter(sensitivity__id=self.request.GET["sensitivity"])
         if self.request.GET.get("system_type"):
             queryset = queryset.filter(system_type__id=self.request.GET["system_type"])
+        if self.request.GET.get("business_service_owner"):
+            queryset = queryset.filter(business_service_owner__id=self.request.GET["business_service_owner"])
+        if self.request.GET.get("system_owner"):
+            queryset = queryset.filter(system_owner__id=self.request.GET["system_owner"])
+        if self.request.GET.get("technology_custodian"):
+            queryset = queryset.filter(technology_custodian__id=self.request.GET["technology_custodian"])
+        if self.request.GET.get("information_custodian"):
+            queryset = queryset.filter(information_custodian__id=self.request.GET["information_custodian"])
         if "q" in self.request.GET and self.request.GET["q"]:
             query_str = self.request.GET["q"]
             queryset = queryset.filter(
@@ -141,44 +162,36 @@ class ITSystemRecordAPIResource(View):
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
         response = None
-        try:
-            queryset = (
-                ITSystemRecord.objects.all()
-                .select_related("status", "division", "seasonality", "availability", "sensitivity", "system_type")
-                .order_by("system_id")
-            )
+        queryset = (
+            ITSystemRecord.objects.all()
+            .select_related("status", "division", "seasonality", "availability", "sensitivity", "system_type")
+            .order_by("system_id")
+        )
 
-            # Queryset filtering.
-            if "system_id" in kwargs and kwargs["system_id"]:
-                queryset = queryset.filter(system_id=kwargs["system_id"])
+        # Queryset filtering.
+        if "system_id" in kwargs and kwargs["system_id"]:
+            queryset = queryset.filter(system_id=kwargs["system_id"])
 
-            register = [record.to_dict() for record in queryset]
+        register = [record.to_dict() for record in queryset]
 
-            response = JsonResponse(register, safe=False)
+        response = JsonResponse(register, safe=False)
 
-        except UnboundLocalError as e:
-            if "system_id" in kwargs and kwargs["system_id"]:
-                response = HttpResponseBadRequest("Can't find system " + kwargs["system_id"] + ": " + str(e))
-            else:
-                response = HttpResponseBadRequest(str(e))
         return response
 
-    @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def post(self, request, *args, **kwargs):
         """An API view that allows users to update a record or a contact"""
 
         response = None
         
         if "system_id" in kwargs and kwargs["system_id"]:  # Allow filtering by object system_id.
-            system_id = system_id = kwargs["system_id"]
             try:
-                old_record = ITSystemRecord.objects.get(system_id=system_id)
+                old_record = ITSystemRecord.objects.get(system_id=kwargs["system_id"])
                 data = dict(json.loads(request.body))
-                changes = edit_record_from_dict(record=old_record, dict=data)
-                response = JsonResponse(data=old_record.to_dict(), safe=False)
+                changes = edit_record_from_dict(record=old_record, dict=data, user=request.user)
+                response = JsonResponse(data=changes, safe=False)
 
             except ITSystemRecord.DoesNotExist:
-                response = HttpResponseBadRequest("Can't find system " + system_id)
+                response = HttpResponseBadRequest("Can't find system " + kwargs["system_id"])
             except json.JSONDecodeError:
                 response = HttpResponseBadRequest("JSON data is invalid")
             except ObjectDoesNotExist as e:
@@ -191,7 +204,7 @@ class ITSystemRecordAPIResource(View):
         else:
             try:
                 data = dict(json.loads(request.body))
-                changes = replace_contact(old_contact=data["old_contact"], new_contact=data["new_contact"])
+                changes = replace_contact(old_contact=data["old_contact"], new_contact=data["new_contact"], user=request.user)
                 response = JsonResponse(changes, safe=False)
             except json.JSONDecodeError:
                 response = HttpResponseBadRequest("JSON data is invalid")

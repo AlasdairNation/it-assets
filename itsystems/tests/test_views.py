@@ -49,7 +49,6 @@ class ViewsTestCase(ApiTestCase):
             reverse("it_systems_register")
             + "?q="
             + str(record1.system_id)
-            + "&status=&division=&seasonality=&availability=&vital_records=&sensitivity=&system_type"
         )
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
@@ -59,9 +58,8 @@ class ViewsTestCase(ApiTestCase):
         # Tests fk choice field filtering
         url = (
             reverse("it_systems_register")
-            + "?q=&status=&division="
+            + "?division="
             + str(record2.division.id)
-            + "&seasonality=&availability=&vital_records=&sensitivity=&system_type"
         )
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
@@ -75,9 +73,19 @@ class ViewsTestCase(ApiTestCase):
         record2.save()
         url = (
             reverse("it_systems_register")
-            + "?q=&status=&division=&seasonality=&availability=&vital_records="
+            + "?vital_records="
             + str(record1.vital_records)
-            + "&sensitivity=&system_type"
+        )
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, record1.system_id)
+        self.assertNotContains(resp, record2.system_id)
+
+        # Tests filtering by contacts
+        url = (
+            reverse("it_systems_register")
+            + "?system_owner="
+            + str(record1.system_owner.id)
         )
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
@@ -89,9 +97,8 @@ class ViewsTestCase(ApiTestCase):
             reverse("it_systems_register")
             + "?q="
             + str(record2.name)
-            + "&status=&division=&seasonality=&availability=&vital_records="
+            + "&vital_records="
             + str(record1.vital_records)
-            + "&sensitivity=&system_type"
         )
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)

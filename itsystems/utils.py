@@ -15,27 +15,7 @@ def export_csv(response):
 
     records = ITSystemRecord.objects.all()
     for record in records:
-        record_vals = [
-            record.system_id,
-            record.name,
-            record.status.name if record.status else "",
-            record.division.name if record.division else "",
-            record.business_service_owner.email if record.business_service_owner else "",
-            record.system_owner.email if record.system_owner else "",
-            record.technology_custodian.email if record.technology_custodian else "",
-            record.information_custodian.email if record.information_custodian else "",
-            record.seasonality.name if record.seasonality else "",
-            record.availability.name if record.availability else "",
-            record.link,
-            record.description,
-            record.file_store_link,
-            record.vital_records,
-            record.disposal_authority,
-            record.retention_and_disposal,
-            record.ubcs,
-            record.sensitivity.name if record.sensitivity else "",
-            record.system_type.name if record.system_type else "",
-        ]
+        record_vals = record.to_array()
         writer.writerow(record_vals)
 
 
@@ -130,7 +110,7 @@ def retrieve(cls, id):
     return model
 
 
-def replace_contact(old_contact, new_contact):
+def replace_contact(old_contact, new_contact, user):
     """
     Replaces all instances of one contact in the IT Systems Register with another.
     It then returns a list of changes.
@@ -150,25 +130,37 @@ def replace_contact(old_contact, new_contact):
     if old_contact_fk and new_contact_fk:
         for record in records:
             record_changes = []
-            if record.business_service_owner == old_contact_fk:
-                record.business_service_owner = new_contact_fk
-                record_changes.append("business_service_owner")
-            if record.system_owner == old_contact_fk:
-                record.system_owner = new_contact_fk
-                record_changes.append("system_owner")
-            if record.technology_custodian == old_contact_fk:
-                record.technology_custodian = new_contact_fk
-                record_changes.append("technology_custodian")
-            if record.information_custodian == old_contact_fk:
-                record.information_custodian = new_contact_fk
-                record_changes.append("information_custodian")
+            with reversion.create_revision():
+                if record.business_service_owner == old_contact_fk:
+                    record.business_service_owner = new_contact_fk
+                    record_changes.append("business_service_owner")
+                if record.system_owner == old_contact_fk:
+                    record.system_owner = new_contact_fk
+                    record_changes.append("system_owner")
+                if record.technology_custodian == old_contact_fk:
+                    record.technology_custodian = new_contact_fk
+                    record_changes.append("technology_custodian")
+                if record.information_custodian == old_contact_fk:
+                    record.information_custodian = new_contact_fk
+                    record_changes.append("information_custodian")
 
-            if len(record_changes) > 0:
-                try:
-                    record.save()
-                    changes.append({"record": record.system_id, "success": True, "changes": record_changes})
-                except Exception as e:
-                    changes.append({"record": record.system_id, "success": False, "changes": str(e)})
+                if len(record_changes) > 0:
+                    try:
+                        record.modified_by = user.email
+                        record.save()
+                        changes.append({"record": record.system_id, "success": True, "changes": record_changes})
+
+                        # Create comment for version history
+                        change_log = "Changed via web request: "
+                        for field in record_changes:
+                            change_log += record.__display_field__(field) + ", "
+                        comment = change_log[:-2] + "."
+
+                        # Create version history entry
+                        reversion.set_user(user)
+                        reversion.set_comment(comment)
+                    except Exception as e:
+                        changes.append({"record": record.system_id, "success": False, "changes": str(e)})
     else:
         error_msg = "Failed to find user for value(s):"
         if not old_contact_fk:
@@ -179,13 +171,36 @@ def replace_contact(old_contact, new_contact):
     return changes
 
 
-def edit_record_from_dict(record, dict):
+def edit_record_from_dict(record, dict, user):
     """updates record with new values passed in from a dictionary, returning the updated record values as a dictionary"""
-    updated_record = record.to_dict()
-    updated_record.update(dict)
-    record.set_from_dict(dict=updated_record, plain_text=True, force=False)
-    record.save()
+    # Compares incoming values to base record
+    original = record.to_dict()
+    incoming = record.to_dict()
+    incoming.update(dict)
+    incoming_rec = ITSystemRecord()
+    incoming_rec.set_from_dict(incoming)
+    if len(record.compare(incoming_rec))>0:
+        with reversion.create_revision():
+            # updated record
+            record.set_from_dict(dict=incoming, plain_text=True, force=False)
+            record.modified_by = user.email
+            record.save()
+
+            # Create comment for version history
+            change_log = "Changed via web request: "
+            for field in dict.keys():
+                if field in original.keys():
+                    change_log += record.__display_field__(field) + ", "
+            comment = change_log[:-2] + "."
+
+            # Create version history entry
+            reversion.set_user(user)
+            reversion.set_comment(comment)
     return record.to_dict()
+
+def get_unique_users(field):
+    unique_vals = ITSystemRecord.objects.values_list(field, flat=True).distinct()
+    return DepartmentUser.objects.filter(pk__in=unique_vals).order_by('email')
 
 
 def __validate_csv(csv_file):
@@ -203,8 +218,10 @@ def __validate_csv(csv_file):
             raw_text = csv_file.read().decode(encoding="utf-8", errors="replace")
             csv_headers = raw_text.splitlines()[0].split(",")
             model_fields = __get_model_fields()
-            # Checks that csv has the correct headers
-            if all(csv == model.name for csv, model in zip(csv_headers, model_fields)):
+            all_headers_present = True
+            for field in model_fields:
+                all_headers_present = field.name in csv_headers and all_headers_present
+            if all_headers_present:
                 valid = True
                 msg = "CSV is Valid"
             else:
@@ -214,7 +231,6 @@ def __validate_csv(csv_file):
     else:
         msg = "The selected file isn't a CSV"
     return {"valid": valid, "message": msg, "raw_text": raw_text}
-
 
 def __get_model_fields():
     """

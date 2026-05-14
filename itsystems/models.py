@@ -143,6 +143,8 @@ class ITSystemRecord(models.Model):
         related_name="assigned_division",
         help_text="Division",
     )
+    description = models.TextField(null=True, blank=True, verbose_name="Description")
+    link = models.URLField(max_length=2048, null=True, blank=True, help_text="URL to web application")
     business_service_owner = models.ForeignKey(
         DepartmentUser,
         on_delete=models.SET_NULL,
@@ -195,8 +197,6 @@ class ITSystemRecord(models.Model):
         related_name="assigned_availability",
         help_text="Availability",
     )
-    link = models.URLField(max_length=2048, null=True, blank=True, help_text="URL to web application")
-    description = models.TextField(null=True, blank=True, verbose_name="Description")
     file_store_link = models.URLField(max_length=2048, null=True, blank=True, verbose_name="File Store Link", help_text="URL to file store")
     vital_records = models.BooleanField(default=False, verbose_name="Vital Records")
     disposal_authority = models.CharField(max_length=255, null=True, blank=True, verbose_name="Disposal Authority")
@@ -347,14 +347,14 @@ class ITSystemRecord(models.Model):
             "name": self.name,
             "status": self.status.name if self.status else None,
             "division": self.division.name if self.division else None,
+            "description": self.description,
+            "link": self.link,
             "business_service_owner": self.business_service_owner.email if self.business_service_owner else None,
             "system_owner": self.system_owner.email if self.system_owner else None,
             "technology_custodian": self.technology_custodian.email if self.technology_custodian else None,
             "information_custodian": self.information_custodian.email if self.information_custodian else None,
             "seasonality": self.seasonality.name if self.seasonality else None,
             "availability": self.availability.name if self.availability else None,
-            "link": self.link,
-            "description": self.description,
             "file_store_link": self.file_store_link,
             "vital_records": self.vital_records,
             "disposal_authority": self.disposal_authority,
@@ -363,6 +363,9 @@ class ITSystemRecord(models.Model):
             "sensitivity": self.sensitivity.name if self.sensitivity else None,
             "system_type": self.system_type.name if self.system_type else None,
         }
+    
+    def to_array(self):
+        return self.to_dict().values()
 
     def __str__(self):
         """
@@ -395,29 +398,31 @@ class ITSystemRecord(models.Model):
         """
         return self._meta.get_field(self.__strip_field__(field)).verbose_name
 
-    def __get_choice_fk(self, text, ChoiceClass, force=False, force_failures=[]):
+    def __get_choice_fk(self, text, ChoiceClass, force=False, force_failures=None):
         """
         Retrieves a division id from the inputted text value.
         """
         fk = None
+
         try:
             if text:
                 fk = ChoiceClass.objects.get(name=text)
-        except Exception:
+        except ChoiceClass.DoesNotExist:
             message = str(ChoiceClass._meta.verbose_name) + ": Can't find option '" + text + "'."
-            if force:
+            if force and (force_failures is not None):
                 force_failures.append(message)
             else:
                 raise ChoiceClass.DoesNotExist(message)
         return fk
 
-    def __get_user_fk(self, email, field, force=False, force_failures=[]):
+    def __get_user_fk(self, email, field, force=False, force_failures=None):
         """
         Retrieves a user id from an inputted email or display name.
         """
         user = None
         suffix = "@dbca.wa.gov.au"
         email_query = None
+
         try:
             if email:
                 if email.endswith(suffix):
@@ -427,9 +432,9 @@ class ITSystemRecord(models.Model):
                     email_query = names[0].lower() + "." + "".join(names[1:]).lower() + suffix
             if email_query:
                 user = DepartmentUser.objects.get(email=email_query)
-        except Exception:
+        except DepartmentUser.DoesNotExist:
             message = field + ": Can't find user '" + email + "'."
-            if email and force:
+            if email and force and (force_failures is not None):
                 force_failures.append(message)
             elif email and not force:
                 raise DepartmentUser.DoesNotExist(message)

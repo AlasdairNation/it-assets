@@ -30,7 +30,7 @@ class UtilsTests(TestCase):
             return self.raw_text
 
     class FauxPOST:
-        def __init__(self, csv_file, user, force=False):
+        def __init__(self, csv_file, user, force="False"):
             self.FILES = {"csv_file": csv_file}
             self.POST = {"force": force}
             self.user = user
@@ -49,7 +49,7 @@ class UtilsTests(TestCase):
         above_2mb = UtilsTests.FauxCSVFile(name="test.csv", is_multiple_chunks=True, raw_text=None)
 
         incorrect_header_fields = ITSystemRecord._meta.get_fields()
-        incorrect_csv_text = ",".join(get_field_names(incorrect_header_fields)) + "\r\nrandomtext"
+        incorrect_csv_text = (",".join(get_field_names(incorrect_header_fields)) + "\r\n").replace("description","non-existent-field")
         incorrect_headers = UtilsTests.FauxCSVFile(name="test.csv", is_multiple_chunks=False, raw_text=incorrect_csv_text)
 
         correct_header_fields = ITSystemRecord._meta.get_fields()[1:-4]
