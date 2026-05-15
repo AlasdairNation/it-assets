@@ -12,9 +12,6 @@ from itassets.utils import ModelDescMixin
 from .models import AscenderActionLog, CostCentre, DepartmentUser, Location
 from .views import DepartmentUserExport
 
-from itsystems.models import ITSystemRecord
-from itsystems.admin import ITSystemRecordAdmin
-
 
 class DepartmentUserForm(forms.ModelForm):
     class Meta:
@@ -420,4 +417,4 @@ service_desk_admin_site.register(AscenderActionLog, AscenderActionLogAdmin)
 service_desk_admin_site.register(CostCentre, CostCentreAdmin)
 service_desk_admin_site.register(DepartmentUser, DepartmentUserAdmin)
 service_desk_admin_site.register(Location, LocationAdmin)
-service_desk_admin_site.register(ITSystemRecord, ITSystemRecordAdmin)
+# service_desk_admin_site.register(ITSystemRecord, ITSystemRecordAdmin)
