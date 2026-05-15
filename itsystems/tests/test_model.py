@@ -90,6 +90,17 @@ class ITSystemRecordTestCase(TestCase):
         changes = record.compare(new_record)
         self.assertIs(len(changes), 0)
 
+    def test_null_on_delete(self):
+        """
+        Tests the ITSystemRecord SET_NULL_AND_NOTIFY delete function sets contact fields to null upon the fk objects deletion.
+        """
+        # Tests DepartmentUser deletion
+        pk = self.record.business_service_owner.pk
+        user = DepartmentUser.objects.get(pk=pk)
+        user.delete()
+        updated_record = ITSystemRecord.objects.get(pk=self.record.pk)
+        self.assertEqual(updated_record.business_service_owner, None)
+
 
 # Creates a DepartmentUser object for testing
 def create_test_user():

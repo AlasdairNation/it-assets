@@ -1,7 +1,18 @@
 from django.db import models
 
 from organisation.models import DepartmentUser
+from .notifications import send_user_deletion_email
 
+def SET_NULL_AND_NOTIFY(collector, field, sub_objs, using):
+    """
+    Notifies the register 
+    """
+    it_system = sub_objs[0]
+    field_name = field.name
+    field_name_verbose = field.verbose_name
+    value = str(getattr(it_system,field_name))
+    send_user_deletion_email(system_name=it_system,field_name=field_name_verbose, field_value=value)
+    collector.add_field_update(field, None, sub_objs)
 
 class Division(models.Model):
     """
@@ -147,7 +158,7 @@ class ITSystemRecord(models.Model):
     link = models.URLField(max_length=2048, null=True, blank=True, help_text="URL to web application")
     business_service_owner = models.ForeignKey(
         DepartmentUser,
-        on_delete=models.SET_NULL,
+        on_delete=SET_NULL_AND_NOTIFY,
         null=True,
         blank=True,
         verbose_name="Business Service Owner",
@@ -156,7 +167,7 @@ class ITSystemRecord(models.Model):
     )
     system_owner = models.ForeignKey(
         DepartmentUser,
-        on_delete=models.SET_NULL,
+        on_delete=SET_NULL_AND_NOTIFY,
         null=True,
         blank=True,
         verbose_name="System Owner",
@@ -165,7 +176,7 @@ class ITSystemRecord(models.Model):
     )
     technology_custodian = models.ForeignKey(
         DepartmentUser,
-        on_delete=models.SET_NULL,
+        on_delete=SET_NULL_AND_NOTIFY,
         null=True,
         blank=True,
         verbose_name="Technology Custodian",
@@ -174,7 +185,7 @@ class ITSystemRecord(models.Model):
     )
     information_custodian = models.ForeignKey(
         DepartmentUser,
-        on_delete=models.SET_NULL,
+        on_delete=SET_NULL_AND_NOTIFY,
         null=True,
         blank=True,
         verbose_name="Information Custodian",

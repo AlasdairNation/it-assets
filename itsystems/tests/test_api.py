@@ -55,7 +55,7 @@ class ITSystemRecordAPIResourceTestCase(ApiTestCase):
 
         # Tests changing the name of an existing record
         old_name = self.record1.name
-        new_name = old_name[:-1] + "added_string"
+        new_name = old_name[:-5] + "added_string"
 
         url = reverse("it_system_api_resource", kwargs={"system_id": self.record1.system_id})
         response = self.client.post(path=url, data=json.dumps({"name": new_name}), secure=False, content_type="application/json")
