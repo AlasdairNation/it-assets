@@ -290,9 +290,7 @@ jobs:
         # The inspection output will show the platforms and tags associated with the manifest list.
         id: inspect
         run: |
-          docker buildx imagetools inspect '${GHCR_IMAGE}:${STEPS_META_OUTPUTS_VERSION}'
-        env:
-          STEPS_META_OUTPUTS_VERSION: ${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect '${{ env.GHCR_IMAGE }}:${{ steps.meta.outputs.version }}'
 
   scan:
     # This job scans the merged Docker manifest produced in the previous job for security vulnerabilities
