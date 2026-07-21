@@ -267,7 +267,7 @@ jobs:
             --annotation='index:org.opencontainers.image.created=${STEPS_TIMESTAMP_OUTPUTS_TIMESTAMP}' \
             --annotation='index:org.opencontainers.image.url=${GITHUB_EVENT_REPOSITORY_URL}' \
             --annotation='index:org.opencontainers.image.source=${GITHUB_EVENT_REPOSITORY_URL}' \
-            $(printf '${GHCR_IMAGE}@sha256:%s ' *)
+            $(printf '${{ env.GHCR_IMAGE }}@sha256:%s ' *)
         env:
           GITHUB_EVENT_REPOSITORY_DESCRIPTION: ${{ github.event.repository.description }}
           STEPS_TIMESTAMP_OUTPUTS_TIMESTAMP: ${{ steps.timestamp.outputs.timestamp }}
@@ -282,7 +282,7 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create  $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${GHCR_IMAGE}@sha256:%s ' *)
+            $(printf '${{ env.GHCR_IMAGE }}@sha256:%s ' *)
 
       - name: Inspect image
         # This step inspects the created manifest list to verify its contents.
