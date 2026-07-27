@@ -77,7 +77,6 @@ INSTALLED_APPS = (
     "registers",
     "itsystems",
     "reversion",
-    "dbca_utils",
 )
 
 MIDDLEWARE = [
