@@ -82,9 +82,10 @@ jobs:
         # This step checks out the code from the repository.
         # It uses the actions/checkout action to clone the repository into the runner's workspace.
         id: checkout-repo
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Docker meta default
         # This step generates metadata for the Docker image.
@@ -262,11 +263,15 @@ jobs:
         run: |
           docker buildx imagetools create \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            --annotation='index:org.opencontainers.image.description=${{ github.event.repository.description }}' \
-            --annotation='index:org.opencontainers.image.created=${{ steps.timestamp.outputs.timestamp }}' \
-            --annotation='index:org.opencontainers.image.url=${{ github.event.repository.url }}' \
-            --annotation='index:org.opencontainers.image.source=${{ github.event.repository.url }}' \
+            --annotation='index:org.opencontainers.image.description=${GITHUB_EVENT_REPOSITORY_DESCRIPTION}' \
+            --annotation='index:org.opencontainers.image.created=${STEPS_TIMESTAMP_OUTPUTS_TIMESTAMP}' \
+            --annotation='index:org.opencontainers.image.url=${GITHUB_EVENT_REPOSITORY_URL}' \
+            --annotation='index:org.opencontainers.image.source=${GITHUB_EVENT_REPOSITORY_URL}' \
             $(printf '${{ env.GHCR_IMAGE }}@sha256:%s ' *)
+        env:
+          GITHUB_EVENT_REPOSITORY_DESCRIPTION: ${{ github.event.repository.description }}
+          STEPS_TIMESTAMP_OUTPUTS_TIMESTAMP: ${{ steps.timestamp.outputs.timestamp }}
+          GITHUB_EVENT_REPOSITORY_URL: ${{ github.event.repository.url }}
 
       - name: Create manifest list and push without annotations
         # This step creates a manifest list for the Docker images built for different platforms.
