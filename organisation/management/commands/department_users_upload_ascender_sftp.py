@@ -5,6 +5,7 @@ from tempfile import NamedTemporaryFile
 
 import paramiko
 from django.core.management.base import BaseCommand
+from paramiko.ssh_exception import NoValidConnectionsError
 
 from organisation.models import DepartmentUser
 
@@ -50,10 +51,15 @@ class Command(BaseCommand):
         logger.info("Connecting to Ascender SFTP")
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(host, port=port, username=username, password=password)
+        try:
+            client.connect(host, port=port, username=username, password=password)
+        except NoValidConnectionsError:
+            logger.error("Unable to connect to Ascender SFTP")
+            return
 
         sftp = client.open_sftp()
         logger.info("Uploading CSV to Ascender SFTP")
         sftp.put(localpath=data.name, remotepath=f"{remote_dir}/department_users_details.csv")
         sftp.close()
         client.close()
+        logger.info("Upload completed")
