@@ -348,9 +348,7 @@ class ResolveNamesTestCase(TestCase):
 
     def test_none_values_become_empty_strings(self):
         """None values in the job dict are treated as empty strings."""
-        first_name, second_name, surname, preferred_name = _resolve_names(
-            self._job(first_name=None, second_name=None, preferred_name=None)
-        )
+        first_name, second_name, surname, preferred_name = _resolve_names(self._job(first_name=None, second_name=None, preferred_name=None))
         self.assertEqual(first_name, "")
         self.assertEqual(second_name, "")
         self.assertEqual(preferred_name, "")

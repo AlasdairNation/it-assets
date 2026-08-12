@@ -186,7 +186,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
     ascender_full_name.short_description = "full name"
 
     def ascender_preferred_name(self, instance):
-        return instance.get_ascender_preferred_name()
+        return instance.get_ascender_preferred_name() or ""
 
     ascender_preferred_name.short_description = "preferred name"
 
