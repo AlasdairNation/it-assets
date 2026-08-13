@@ -85,6 +85,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         "ascender_full_name",
         "ascender_preferred_name",
         "assigned_licences",
+        "entra_manager",
         "copilot_group",
         "proxy_addresses",
         "dir_sync_enabled",
@@ -138,6 +139,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
                     "email",
                     "name",
                     "assigned_licences",
+                    "entra_manager",
                     "copilot_group",
                     "dir_sync_enabled",
                     "last_signin",
@@ -270,6 +272,14 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
             return obj.get_copilot_group()
         else:
             return ""
+
+    def entra_manager(self, obj=None):
+        if obj and obj.get_manager_entra():
+            return obj.get_manager_entra()
+        else:
+            return ""
+
+    entra_manager.short_description = "Manager"
 
     def admin_change_view(self, request, object_id, form_url="", extra_context={}):
         """A special change form for superusers only to edit employee_id/maiden_name.
