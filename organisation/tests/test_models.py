@@ -279,7 +279,7 @@ class DepartmentUserAscenderGettersTestCase(TestCase):
 
     def test_get_ascender_preferred_name_null(self):
         self.user.ascender_data = {"preferred_name": None}
-        self.assertEqual(self.user.get_ascender_preferred_name(), "")
+        self.assertIsNone(self.user.get_ascender_preferred_name())
 
     def test_get_position_title(self):
         self.assertEqual(self.user.get_position_title(), "SENIOR DEVELOPER")

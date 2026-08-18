@@ -1,13 +1,14 @@
 from datetime import date
+from os import path
+
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.urls import reverse
-from os import path
 
-from organisation.models import DepartmentUser, CostCentre
 from itassets.utils import smart_truncate
+from organisation.models import CostCentre, DepartmentUser
 
 CRITICALITY_CHOICES = (
     (1, "Critical"),
@@ -33,7 +34,7 @@ class ITSystemUserGroup(models.Model):
         ordering = ("name",)
 
     def __str__(self):
-        return "{} ({})".format(self.name, self.user_count)
+        return f"{self.name} ({self.user_count})"
 
 
 class ITSystem(models.Model):
@@ -278,7 +279,7 @@ class StandardChange(models.Model):
     expiry = models.DateField(null=True, blank=True)
 
     def __str__(self):
-        return "{}: {}".format(self.pk, smart_truncate(self.name))
+        return f"{self.pk}: {smart_truncate(self.name)}"
 
     def get_absolute_url(self):
         return reverse("standard_change_detail", kwargs={"pk": self.pk})
@@ -396,7 +397,7 @@ class ChangeRequest(models.Model):
     )
 
     def __str__(self):
-        return "{}: {}".format(self.pk, smart_truncate(self.title))
+        return f"{self.pk}: {smart_truncate(self.title)}"
 
     class Meta:
         ordering = ("-planned_start",)
@@ -457,8 +458,8 @@ class ChangeRequest(models.Model):
     def email_endorser(self):
         # Send an email to the endorser (if defined) with a link to the change request endorse view.
         if not self.endorser:
-            return None
-        subject = "Endorsement for change request {}".format(self)
+            return
+        subject = f"Endorsement for change request {self}"
         if Site.objects.filter(name="Change Requests").exists():
             domain = Site.objects.get(name="Change Requests").domain
         else:
@@ -469,18 +470,18 @@ class ChangeRequest(models.Model):
         if not domain.startswith("https://"):
             domain = "https://" + domain
         endorse_url = "{}{}".format(domain, reverse("change_request_endorse", kwargs={"pk": self.pk}))
-        text_content = """This is an automated message to let you know that you have
-            been assigned as the endorser for a change request submitted to OIM by {}.\n
+        text_content = f"""This is an automated message to let you know that you have
+            been assigned as the endorser for a change request submitted to OIM by {self.requester.name}.\n
             Please visit the following URL, review the change request details and register
             endorsement or rejection of the change:\n
-            {}\n
-            """.format(self.requester.name, endorse_url)
-        html_content = """<p>This is an automated message to let you know that you have
-            been assigned as the endorser for a change request submitted to OIM by {0}.</p>
+            {endorse_url}\n
+            """
+        html_content = f"""<p>This is an automated message to let you know that you have
+            been assigned as the endorser for a change request submitted to OIM by {self.requester.name}.</p>
             <p>Please visit the following URL, review the change request details and register
             endorsement or rejection of the change:</p>
-            <ul><li><a href="{1}">{1}</a></li></ul>
-            """.format(self.requester.name, endorse_url)
+            <ul><li><a href="{endorse_url}">{endorse_url}</a></li></ul>
+            """
         msg = EmailMultiAlternatives(subject, text_content, settings.NOREPLY_EMAIL, [self.endorser.email])
         msg.attach_alternative(html_content, "text/html")
         msg.send()
@@ -488,8 +489,8 @@ class ChangeRequest(models.Model):
     def email_requester(self):
         # Send an email to the requester (if defined) with a link to the change request completion view.
         if not self.requester:
-            return None
-        subject = "Completion of change request {}".format(self)
+            return
+        subject = f"Completion of change request {self}"
         if Site.objects.filter(name="Change Requests").exists():
             domain = Site.objects.get(name="Change Requests").domain
         else:
@@ -529,5 +530,5 @@ class ChangeLog(models.Model):
 
     def save(self, *args, **kwargs):
         """After saving a log entry, save the parent change to set the updated field value."""
-        super(ChangeLog, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
         self.change_request.save()

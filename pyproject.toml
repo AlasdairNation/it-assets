@@ -10,9 +10,9 @@ authors = [
 license = "Apache-2.0"
 requires-python = ">=3.13,<4.0"
 dependencies = [
-  "django==5.2.16",
+  "django==5.2.17",
   "psycopg[binary,pool]==3.3.4",
-  "dbca-utils==3.0.10",
+  "dbca-utils==3.0.13",
   "django-extensions==4.1",
   "python-dotenv==1.2.2",
   "dj-database-url==3.1.2",
@@ -24,8 +24,8 @@ dependencies = [
   "msal==1.37.0",
   "whitenoise[brotli]==6.12.0",
   "xlsxwriter==3.2.9",
-  "sentry-sdk[django]==2.66.0",
-  "redis==8.0.1",
+  "sentry-sdk[django]==2.66.1",
+  "redis==8.1.0",
   "django-storages[azure]==1.14.6",
   "paramiko==4.0.0",                # Fix version (no upgrades) until Ascender SFTP updated
   "django-reversion==6.3.0",
@@ -33,12 +33,12 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "ipython>=9.15.0",
+  "ipython>=9.16.1",
   "ipdb>=0.13.13",
   "mixer>=7.2.2",
-  "pre-commit>=4.6.1",
+  "pre-commit>=4.6.2",
   "coverage>=7.15.1",
-  "django-stubs>=6.0.7",
+  "django-stubs>=6.1.0",
   "deptry>=0.25.1",
 ]
 
