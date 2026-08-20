@@ -60,9 +60,9 @@ spec:
             failureThreshold: 3
             timeoutSeconds: 10
           securityContext:
+            runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
-            runAsNonRoot: true
             runAsUser: 65532
             privileged: false
             allowPrivilegeEscalation: false

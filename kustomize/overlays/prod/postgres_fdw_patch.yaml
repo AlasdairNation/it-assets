@@ -14,17 +14,17 @@ spec:
         app: itassets-postgres-fdw
     spec:
       initContainers:
-        - name: data-vol-chown
-          image: busybox
-          imagePullPolicy: IfNotPresent
-          command:
-            - chown
-            - -R
-            - '999:999'
-            - /var/lib/postgresql/data
-          volumeMounts:
-            - name: itassets-postgres-fdw-data
-              mountPath: /var/lib/postgresql/data
+        # - name: data-vol-chown
+        #   image: busybox
+        #   imagePullPolicy: IfNotPresent
+        #   command:
+        #     - chown
+        #     - -R
+        #     - '999:999'
+        #     - /var/lib/postgresql/data
+        #   volumeMounts:
+        #     - name: itassets-postgres-fdw-data
+        #       mountPath: /var/lib/postgresql/data
       containers:
         - name: itassets-postgres-fdw
           env:
