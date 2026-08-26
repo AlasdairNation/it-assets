@@ -1471,7 +1471,7 @@ class DepartmentUser(models.Model):
         else:
             return None
 
-    def get_copilot_group_deprecated(self) -> str | None:
+    def get_copilot_group(self) -> str | None:
         """Returns the Entra ID Copilot security group this user is assigned to, or None."""
         if self.assigned_groups:
             copilot_groups = [i for i in self.assigned_groups if i in self.COPILOT_GROUPS.keys()]
@@ -1493,7 +1493,7 @@ class DepartmentUser(models.Model):
             return groups
 
 
-    def get_copilot_group(self) -> str | None:
+    def get_copilot_group_name(self) -> str | None:
         """Returns the display name of the first copilot group that this user is assigned to, or None"""
         groups = self.get_assigned_entra_groups()
         if groups:
