@@ -584,6 +584,67 @@ class GetGraphUserTestCase(TestCase):
         user = mixer.blend(DepartmentUser, email=random_dbca_email, azure_guid=None)
         self.assertIsNone(user.get_graph_user())
 
+# ---------------------------------------------------------------------------
+# DepartmentUser.get_assigned_entra_groups() & DepartmentUser.get_copilot_group()
+# ---------------------------------------------------------------------------
+
+class GetAssignedEntraGroupsTestCase(TestCase):
+    def setUp(self):
+        self.user = mixer.blend(
+            DepartmentUser,
+            assigned_entra_groups = {"some-name-1":"some-guid-1","sg-oim-app-copilot-users":"copilot-guid-1","sg-oim-app-copilot-eval":"copilot-guid-2","some-name-2":"some-guid-2"}
+        )
+
+    def test_get_assigned_entra_groups(self):
+        # Test retrieving group names
+        groups = self.user.get_assigned_entra_groups()
+        self.assertIn("some-name-1",groups)
+        self.assertIn("some-name-2",groups)
+        self.assertIn("sg-oim-app-copilot-users",groups)
+        self.assertIn("sg-oim-app-copilot-eval",groups)
+        self.assertEqual(len(groups),4)
+
+        # Test retrieving group guids
+        groups = self.user.get_assigned_entra_groups(guids=True)
+        self.assertIn("some-guid-1",groups)
+        self.assertIn("copilot-guid-1",groups)
+        self.assertIn("copilot-guid-2",groups)
+        self.assertIn("some-guid-2",groups)
+        self.assertEqual(len(groups),4)
+
+        # Test accurate report of empty dict
+        self.user.assigned_entra_groups = {}
+        groups = self.user.get_assigned_entra_groups()
+        self.assertIsNone(groups)
+        groups = self.user.get_assigned_entra_groups(guids=True)
+        self.assertIsNone(groups)
+
+        # Test accurate report of None field
+        self.user.assigned_entra_groups = None
+        groups = self.user.get_assigned_entra_groups()
+        self.assertIsNone(groups)
+        groups = self.user.get_assigned_entra_groups(guids=True)
+        self.assertIsNone(groups)
+
+    def test_get_copilot_group(self):
+        # Test finding 1 viable copilot group
+        group = self.user.get_copilot_group_name()
+        self.assertEqual("sg-oim-app-copilot-users",group)
+
+        # Test finding >1 viable copilot groups
+        self.user.assigned_entra_groups.update({"sg-fb-app-copilot-users":"copilot-guid-3"})
+        group = self.user.get_copilot_group_name()
+        self.assertEqual(group == "sg-fb-app-copilot-users" or group == "sg-oim-app-copilot-users",True)
+
+        # Test finding 0 viable copilot groups
+        self.user.assigned_entra_groups = {"some-name-1":"some-guid-1","sg-oim-app-copilot-eval":"copilot-guid-2","some-name-2":"some-guid-2"}
+        group = self.user.get_copilot_group_name()
+        self.assertIsNone(group)
+
+        # Test the user being in no groups
+        self.user.assigned_entra_groups = None
+        group = self.user.get_copilot_group_name()
+        self.assertIsNone(group)
 
 # ---------------------------------------------------------------------------
 # Model __str__ representations

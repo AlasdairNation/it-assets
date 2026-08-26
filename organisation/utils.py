@@ -291,6 +291,32 @@ def ms_graph_list_member_groups(azure_guid: str, token: Optional[dict] = None) -
     groups = groups + j["value"]  # Final page.
     return groups
 
+def ms_graph_list_member_groups_with_names(azure_guid: str, token: Optional[Dict] = None) -> Dict | None:
+    """Query the Microsoft Graph API to find a list of groups a user belongs to, and return the results as a dict of displayNames"""
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occasionally fails and returns None.
+        return None
+    headers = {
+        "Authorization": f"Bearer {token['access_token']}",
+        "ConsistencyLevel": "eventual",
+    }
+    url = f"https://graph.microsoft.com/v1.0/users/{azure_guid}/memberOf?$select=id,displayName"
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+    j = resp.json()
+    groups = []
+
+    while "@odata.nextLink" in j:
+        groups = groups + j["value"]
+        resp = requests.get(j["@odata.nextLink"], headers=headers)
+        resp.raise_for_status()
+        j = resp.json()
+
+    groups = groups + j["value"]  # Final page.
+
+    return {g['displayName']: g['id'] for g in groups}
+
 
 def ms_graph_validate_password(password: str, token: Optional[dict] = None) -> bool | None:
     """Query the Microsoft Graph API (beta) if a given password string validates complexity requirements."""
