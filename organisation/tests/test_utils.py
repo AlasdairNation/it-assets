@@ -14,6 +14,7 @@ from organisation.utils import (
     ms_graph_list_subscribed_skus,
     ms_graph_list_users,
     ms_graph_validate_password,
+    ms_graph_list_member_groups_with_names,
     parse_ad_pwd_last_set,
     parse_windows_ts,
     title_except,
@@ -397,3 +398,28 @@ class MsGraphListSigninsUserTestCase(TestCase):
         result = ms_graph_list_signins_user("user-guid-001")
 
         self.assertIsNone(result)
+
+class MsGraphListMemberGroupsWithNamesTestCase(TestCase):
+    @patch("organisation.utils.requests.get")
+    def test_ms_graph_list_member_groups_with_names(self, mock_get):
+        package = {
+            "value":[
+                {
+                    "@odata.type": "#microsoft.graph.group",
+                    "id": "sku-1",
+                    "displayName": "example-group-1"
+                },
+                {
+                    "@odata.type": "#microsoft.graph.group",
+                    "id": "sku-2",
+                    "displayName": "example-group-2"
+                }
+            ]
+        }
+        mock_get.return_value = mock_response(package)
+
+        result = ms_graph_list_member_groups_with_names(token=FAKE_TOKEN,azure_guid="some guid")
+
+        self.assertEqual(result['example-group-1'], "sku-1")
+        self.assertEqual(result['example-group-2'], "sku-2")
+        self.assertEqual(len(result),2)
