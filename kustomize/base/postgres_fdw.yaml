@@ -8,6 +8,12 @@ spec:
   serviceName: itassets-postgres-fdw
   template:
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: itassets-postgres-fdw
           image: ghcr.io/dbca-wa/postgres-oracle-fdw:16-3.5
@@ -25,8 +31,8 @@ spec:
               memory: '1Gi'
               cpu: '1000m'
           securityContext:
-            runAsNonRoot: true
-            runAsUser: 999
+            seccompProfile:
+              type: RuntimeDefault
             privileged: false
             allowPrivilegeEscalation: false
             capabilities:
