@@ -8,6 +8,7 @@ from dateutil.parser import parse
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.contrib.postgres.fields import ArrayField
+from django.db.models import JSONField
 
 from itassets.utils import ms_graph_client_token, smart_truncate, upload_blob
 
@@ -218,6 +219,12 @@ class DepartmentUser(models.Model):
         blank=True,
         null=True,
         help_text="Entra ID groups assigned to this user's account",
+    )
+    assigned_entra_groups = JSONField(
+        default=dict,
+        null=True,
+        blank=True,
+        editable=False
     )
 
     def __str__(self):
@@ -1464,7 +1471,7 @@ class DepartmentUser(models.Model):
         else:
             return None
 
-    def get_copilot_group(self) -> str | None:
+    def get_copilot_group_deprecated(self) -> str | None:
         """Returns the Entra ID Copilot security group this user is assigned to, or None."""
         if self.assigned_groups:
             copilot_groups = [i for i in self.assigned_groups if i in self.COPILOT_GROUPS.keys()]
@@ -1474,6 +1481,23 @@ class DepartmentUser(models.Model):
                 return self.COPILOT_GROUPS[obj_id]
 
         return None
+
+
+    def get_assigned_entra_groups(self, guids : bool = False) -> list | None:
+        """Returns a list of entra groups the user is a member of, or None. By default this returns the display names only, but if guids is set to 'True' it returns the guids instead."""
+        if self.assigned_entra_groups and len(self.assigned_entra_groups)>0:
+            if guids:
+                groups = self.assigned_entra_groups.values()
+            else:
+                groups = self.assigned_entra_groups.keys()
+            return groups
+
+
+    def get_copilot_group(self) -> str | None:
+        """Returns the display name of the first copilot group that this user is assigned to, or None"""
+        groups = self.get_assigned_entra_groups()
+        if groups:
+            return next(filter(lambda group_name: 'app-copilot-users' in group_name, groups), None)
 
 
 class DepartmentUserLog(models.Model):
