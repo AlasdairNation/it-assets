@@ -59,12 +59,14 @@ def send_daily_audit_email(flagged_users):
 {flagged_user["system_name"]}
 {flagged_user["field_name"]}: {flagged_user["user_email"]}
 Account status: {flagged_user["user_status"]}
+Active?: {flagged_user["active"]}
 """
             html_content_body += f"""
 <ul>
 <li><b>{flagged_user["system_name"]}</b></li>
 <li>{flagged_user["field_name"]}: {flagged_user["user_email"]}</li>
 <li>Account status: {flagged_user["user_status"]}</li>
+<li>Active?: {flagged_user["active"]}</li>
 </ul>
 """
         # Appends new text to existing text body
