@@ -11,7 +11,7 @@ spec:
         spec:
           containers:
             - name: itassets-cronjob
-              args: ['manage.py', 'it_systems_register_contact_notification', '--e']
+              args: ['manage.py', 'it_systems_register_contact_notification', '-e']
               envFrom:
                 - secretRef:
                     name: itassets-env-prod
