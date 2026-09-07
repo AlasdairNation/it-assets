@@ -76,6 +76,7 @@ INSTALLED_APPS = (
     "organisation",
     "registers",
     "itsystems",
+    "assets",
     "reversion",
 )
 

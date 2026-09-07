@@ -10,6 +10,8 @@ from django.utils.html import mark_safe
 from itassets.utils import ModelDescMixin
 from itsystems.admin import ITSystemRecordAdmin
 from itsystems.models import ITSystemRecord
+from assets.models import Asset
+from assets.admin import AssetAdmin
 
 from .models import AscenderActionLog, CostCentre, DepartmentUser, Location
 from .views import DepartmentUserExport
@@ -438,3 +440,5 @@ service_desk_admin_site.register(CostCentre, CostCentreAdmin)
 service_desk_admin_site.register(DepartmentUser, DepartmentUserAdmin)
 service_desk_admin_site.register(Location, LocationAdmin)
 service_desk_admin_site.register(ITSystemRecord, ITSystemRecordAdmin)
+service_desk_admin_site.register(Asset, AssetAdmin)
+
