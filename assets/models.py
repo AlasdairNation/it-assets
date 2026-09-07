@@ -53,14 +53,14 @@ class Asset(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name="Asset Owner",
+        verbose_name="Owner",
         related_name="asset_owner_of",
         help_text="The unit / branch responsible for this asset"
     )
     contacts = models.ManyToManyField(
         DepartmentUser,
         blank=True,
-        verbose_name="Asset Contacts",
+        verbose_name="Contacts",
         related_name="asset_contact_of",
         help_text="The department user(s) to contact for a technical request"
     )
@@ -77,14 +77,14 @@ class Asset(models.Model):
     # Char field for now, but later could be a Foreign key field, with each OS being added as a distinct object dynamically
     os = models.CharField(
         max_length=255,
-        verbose_name="Operating System",
+        verbose_name="OS",
         null=True,
         blank=True
     )
 
     os_version = models.CharField(
         max_length=255,
-        verbose_name="Operating System Version",
+        verbose_name="OS Version",
         null=True,
         blank=True,
         validators= [
@@ -94,6 +94,20 @@ class Asset(models.Model):
                 code="invalid_os_version"
             )
         ]          
+    )
+
+    first_seen = models.DateTimeField(
+        auto_now_add=True, 
+        verbose_name="First Seen"
+    )
+
+    last_seen = models.DateTimeField(
+        verbose_name="Last Seen"
+    )
+
+    last_modified = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Last Modified"
     )
 
     asset_type_data = models.JSONField(
@@ -110,9 +124,13 @@ class Asset(models.Model):
     def associated_systems(self):
         return ", ".join([str(s) for s in self.systems.all()])
 
-    # @property
-    # def operating_system(self):
-    #     if self.os
+    @property
+    def operating_system(self):
+        displayString = self.os or ""
+        if self.os_version:
+            displayString += f" - {self.os_version}"
+        return displayString
+
 
     def save(self, *args, **kwargs):
         """

@@ -31,6 +31,7 @@ class AssetAdmin(admin.ModelAdmin):
 
     list_filter = (
         "asset_type",
+        "os",
         "owner"
     )
 
@@ -44,7 +45,10 @@ class AssetAdmin(admin.ModelAdmin):
         "asset_type",
         "os",
         "os_version",
-        "asset_type_data"
+        "asset_type_data",
+        "first_seen",
+        "last_seen",
+        "last_modified"
     )
 
     fieldsets = (
@@ -75,6 +79,16 @@ class AssetAdmin(admin.ModelAdmin):
                     "os",
                     "os_version",
                     "asset_type_data"
+                ),
+            },
+        ),
+        (
+            "Meta-Data",
+            {
+                "fields":(
+                    "first_seen",
+                    "last_seen",
+                    "last_modified"
                 ),
             },
         ),
