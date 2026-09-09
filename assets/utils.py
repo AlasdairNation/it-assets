@@ -40,6 +40,7 @@ def ms_graph_query_advanced_hunting(query: str, token: Optional[Dict] = None) ->
     return json.loads(resp.content)['results']
 
 def ms_graph_get_servers(token: Optional[Dict] = None):
+    # Query is manual for prototype, but might be better to have it ported in through a config file
     query = r"""
     DeviceInfo
     | where OSPlatform has ("Linux")
@@ -64,3 +65,37 @@ def ms_graph_get_servers(token: Optional[Dict] = None):
     | order by DeviceName asc
     """
     return ms_graph_query_advanced_hunting(query=query, token=token)
+
+def get_tenable_key_string():
+    # Manual right now, but could be retrieved dynamically from azure key vault
+    return f"accessKey={os.environ["TENABLE_ACCESS_KEY"]};secretKey={os.environ["TENABLE_SECRET_KEY"]}"
+
+def tenable_list_assets():
+    """
+    """
+    headers = {
+        "Content-Type": "application/json",
+        "X-APIKeys": get_tenable_key_string()
+    }
+    url = "https://cloud.tenable.com/assets/"
+    resp = requests.get(url,headers=headers)
+    resp.raise_for_status()
+
+    return json.loads(resp.content)
+
+def tenable_get_servers():
+    # Manual tags for prototype, but could be acquired dynamically from tenable
+    custodians = ["OIM", "BCS","BGPA","Fleet","FMB","FSB","GIS","PVS","RFMS","RIA","ZPA"]
+    assets = []
+    headers = {
+        "Content-Type": "application/json",
+        "X-APIKeys": get_tenable_key_string()
+    }
+
+    for cust in custodians:
+        url = f"https://cloud.tenable.com/workbenches/assets?filter.0.filter=tag.Custodian&filter.0.quality=eq&filter.0.value={cust}"
+        resp = requests.get(url,headers=headers)
+        resp.raise_for_status()
+        assets.append({"data":json.loads(resp.content)['assets'], "custodian":cust})
+
+    return assets

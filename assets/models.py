@@ -41,6 +41,13 @@ class Asset(models.Model):
     }
 
     name = models.CharField(max_length=255, unique=True, verbose_name="Name")
+    aliases = models.JSONField(
+        verbose_name="Alternate names",
+        default = list,
+        null = True,
+        blank = True,
+        editable = False
+    )
     asset_type = models.CharField(
         max_length=2,
         choices=TYPE_CHOICES,
@@ -64,8 +71,6 @@ class Asset(models.Model):
         related_name="asset_contact_of",
         help_text="The department user(s) to contact for a technical request"
     )
-
-
     systems = models.ManyToManyField(
         ITSystemRecord,
         blank=True,
@@ -73,7 +78,6 @@ class Asset(models.Model):
         related_name="related_assets",
         help_text="IT Systems that use this asset",
     ) 
-
     # Char field for now, but later could be a Foreign key field, with each OS being added as a distinct object dynamically
     os = models.CharField(
         max_length=255,
@@ -81,7 +85,6 @@ class Asset(models.Model):
         null=True,
         blank=True
     )
-
     os_version = models.CharField(
         max_length=255,
         verbose_name="OS Version",
@@ -95,22 +98,23 @@ class Asset(models.Model):
             )
         ]          
     )
-
     first_seen = models.DateTimeField(
         auto_now_add=True, 
         verbose_name="First Seen"
     )
-
     last_seen = models.DateTimeField(
         verbose_name="Last Seen"
     )
-
     last_modified = models.DateTimeField(
         auto_now=True,
         verbose_name="Last Modified"
     )
-
-    asset_type_data = models.JSONField(
+    asset_defender_data = models.JSONField(
+        default=dict,
+        null=True,
+        blank=True,
+    )
+    asset_tenable_data = models.JSONField(
         default=dict,
         null=True,
         blank=True,
