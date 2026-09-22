@@ -45,16 +45,15 @@ def _sync_defender_servers():
             if created:
                 asset.aliases = [s['DeviceName']]
             asset.last_seen = now()
-            asset.asset_defender_data=s
+            asset.defender_data=s
             asset.save()
 
         
 def _sync_tenable_servers():
     # Retrieve all servers
-    servers_of_custodians = tenable_get_servers()
-    for servers in servers_of_custodians:
-        owner, created = AssetOwner.objects.get_or_create(name=servers['custodian'])
-        servers = servers['data']
+    servers_and_custodians = tenable_get_servers()
+    for servers, custodian in servers_and_custodians:
+        owner, created = AssetOwner.objects.get_or_create(name=custodian)
         for s in servers:
             # Find all possible names used to identify the server
             aliases = []
@@ -78,30 +77,5 @@ def _sync_tenable_servers():
                     asset.last_seen = now()
                     asset.name = aliases[0]
 
-                asset.asset_tenable_data=s
+                asset.tenable_data=s
                 asset.save()
-
-# Get or Create doesn't really work for lists, so this is just a replacement
-def alias_get_or_create(aliases):
-    for name in aliases:
-        if Asset.objects.filter(aliases__contains=name).exists():
-            return Asset.objects.get(aliases__contains=name), False
-    return Asset.objects.create(name=aliases[0], asset_type='S', last_seen=now()), True
-
-# Tenable combines OS & Version number, so this is the only real way to extract that data.
-# Right now it only extracts the first OS, so if a server has multiple it ignores it.
-# For our sysstems, the second is typically a linux kernel if relevant.
-def lint_tenable_os(os_string):
-    os, version = [None, None]
-    version_regex = r"\d+\.\d+(?:\.\d+)?" # Looks for Major.Minor or Major.Minor.Patch
-    if "Debian" in os_string:
-        version_regex = r"\d{1,2}" # Looks only for Major
-    match = re.search(version_regex,os_string)
-    if match: 
-        os = re.split(version_regex, os_string)[0].strip()
-        version = match.group().strip()
-    elif "Build" in os_string:
-        os = os_string.split("Build")[0]
-    elif os_string is not None or "":
-        os = os_string
-    return os, version

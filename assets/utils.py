@@ -1,12 +1,18 @@
 import requests
 import json
 import os
+
 from typing import Dict, List, Optional
 
 from msal import ConfidentialClientApplication
 
+from django.utils.timezone import now
+
+from assets.models import Asset
+
 def advanced_hunting_client_token() -> Dict | None:
     """Uses the Microsoft msal library to obtain an access token for the Graph API.
+    Retrieves a token that allows for Defender advanced hunting queries.
     Ref: https://docs.microsoft.com/en-us/python/api/msal/msal.application.confidentialclientapplication
     """
     azure_tenant_id = os.environ["AZURE_TENANT_ID"]
@@ -21,8 +27,13 @@ def advanced_hunting_client_token() -> Dict | None:
 
     return token
 
+def get_tenable_key_string():
+    # Manual right now, but could be retrieved dynamically from azure key vault
+    return f"accessKey={os.environ["TENABLE_ACCESS_KEY"]};secretKey={os.environ["TENABLE_SECRET_KEY"]}"
+
 def ms_graph_query_advanced_hunting(query: str, token: Optional[Dict] = None) -> List | None:
     """
+    Queries the advanced hunting endpoint for a given query and returns the results as an array of dicts.
     """
     if not token:
         token = advanced_hunting_client_token()
@@ -66,36 +77,12 @@ def ms_graph_get_servers(token: Optional[Dict] = None):
     """
     return ms_graph_query_advanced_hunting(query=query, token=token)
 
-def get_tenable_key_string():
-    # Manual right now, but could be retrieved dynamically from azure key vault
-    return f"accessKey={os.environ["TENABLE_ACCESS_KEY"]};secretKey={os.environ["TENABLE_SECRET_KEY"]}"
-
-def tenable_list_assets():
+def alias_get_or_create(aliases: list, asset_type: str):
     """
+    Get or Create an asset based on the list of aliases for that asset.
+    Returns a tuple of (Asset <Asset>, Created <bool>).
     """
-    headers = {
-        "Content-Type": "application/json",
-        "X-APIKeys": get_tenable_key_string()
-    }
-    url = "https://cloud.tenable.com/assets/"
-    resp = requests.get(url,headers=headers)
-    resp.raise_for_status()
-
-    return json.loads(resp.content)
-
-def tenable_get_servers():
-    # Manual tags for prototype, but could be acquired dynamically from tenable
-    custodians = ["OIM", "BCS","BGPA","Fleet","FMB","FSB","GIS","PVS","RFMS","RIA","ZPA"]
-    assets = []
-    headers = {
-        "Content-Type": "application/json",
-        "X-APIKeys": get_tenable_key_string()
-    }
-
-    for cust in custodians:
-        url = f"https://cloud.tenable.com/workbenches/assets?filter.0.filter=tag.Custodian&filter.0.quality=eq&filter.0.value={cust}"
-        resp = requests.get(url,headers=headers)
-        resp.raise_for_status()
-        assets.append({"data":json.loads(resp.content)['assets'], "custodian":cust})
-
-    return assets
+    for name in aliases:
+        if Asset.objects.filter(aliases__contains=name).exists():
+            return Asset.objects.get(aliases__contains=name), False
+    return Asset.objects.create(name=aliases[0], asset_type=asset_type, last_seen=now()), True

@@ -35,15 +35,14 @@ class AssetAPIResource(View):
                 "id": asset.pk,
                 "name": asset.name,
                 "aliases": asset.aliases,
-                "type": asset.get_asset_type_display(),
                 "description": asset.description,
-                "owner": asset.owner.name if asset.owner else None,
                 "contacts": asset.asset_contacts,
                 "systems": asset.associated_systems,
                 "os": asset.os,
                 "os_version": asset.os_version,
-                "asset_defender_data": asset.asset_defender_data,
-                "asset_tenable_data": asset.asset_tenable_data,
+                "defender_data": asset.defender_data,
+                "tenable_data": asset.tenable_data,
+                "tags": asset.display_tags
             }
             for asset in queryset
         ]
