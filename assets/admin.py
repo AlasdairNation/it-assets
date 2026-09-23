@@ -97,20 +97,20 @@ class AssetAdmin(admin.ModelAdmin):
 
     # Filters for each of the tag categories
     # Dynamically creates filter classes for each tag.
-    tag_filters = tuple([
-        type(
-            f"{cat.name}Filter",
-            (TagFilterTemplate, ), 
-            {"title":f"Tag: {cat.name}","parameter_name":f"{cat.name.lower()}_tag","category":cat.name}
-        ) 
-        for cat in AssetTagCategory.objects.all()
-    ])
+    # tag_filters = tuple([
+    #     type(
+    #         f"{cat.name}Filter",
+    #         (TagFilterTemplate, ), 
+    #         {"title":f"Tag: {cat.name}","parameter_name":f"{cat.name.lower()}_tag","category":cat.name}
+    #     ) 
+    #     for cat in AssetTagCategory.objects.all()
+    # ])
 
-    list_filter = (
-        "os",
-        DataSourceFilter,
-        ContainedTagsFilter,
-    ) + tag_filters
+    # list_filter = (
+    #     "os",
+    #     DataSourceFilter,
+    #     ContainedTagsFilter,
+    # ) + tag_filters
 
 
     ordering = ["name"]
