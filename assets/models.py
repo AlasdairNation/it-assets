@@ -11,8 +11,8 @@ from itsystems.models import ITSystemRecord
 
 class AssetTagCategory(models.Model):
     class Meta:
-        verbose_name = "Asset Tag Category"
-        verbose_name_plural = "Asset Tag Categories"
+        verbose_name = "Tag"
+        verbose_name_plural = "Tags"
 
     name = models.CharField(max_length=255, unique=True, verbose_name="Name")
 
@@ -20,14 +20,17 @@ class AssetTagCategory(models.Model):
     def get_default_pk(cls):
         return AssetTagCategory.objects.get_or_create(name="Misc.")[0].pk
 
+    def number_of_values(self) -> int:
+        return len(self.tag_values.all())
+
     def __str__(self):
         return self.name
 
     
 class AssetTag(models.Model):
     class Meta:
-        verbose_name = "Asset Tag"
-        verbose_name_plural = "Asset Tags"
+        verbose_name = "Tag Value"
+        verbose_name_plural = "Tag Values"
 
     tag_id = models.CharField(max_length=255,unique=True, editable=False)
     name = models.CharField(max_length=255, verbose_name="Name")
@@ -35,7 +38,8 @@ class AssetTag(models.Model):
         AssetTagCategory,
         on_delete=models.CASCADE,
         default=AssetTagCategory.get_default_pk,
-        related_name="tags_within_category",
+        related_name="tag_values",
+        verbose_name="Tag Category",
         help_text="Tag Category"
     )
 
@@ -49,6 +53,8 @@ class AssetTag(models.Model):
 
         super(AssetTag, self).save(*args, **kwargs)
 
+    def number_of_tagged_assets(self) -> int:
+        return len(self.tagged_assets.all())
 
     def __str__(self):
         return f"{self.category.name}: {self.name}"

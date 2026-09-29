@@ -2,90 +2,85 @@ import json
 
 from django.contrib import admin
 from django.utils.html import mark_safe
+from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
 from .models import Asset, AssetTagCategory, AssetTag
 
-class TagFilterTemplate(admin.SimpleListFilter):
-    """
-    A custom tag filter template class to allow for filtering on categorized tags.
-    Child classes must provide a class string variable for title, parameter_name, and category.
-    """
+class AssetTagInline(admin.TabularInline):
+    model = AssetTag
+    extra = 0
+    readonly_fields = ("total_assets",)
+    fields = ("name", "total_assets")
 
-    def lookups(self, request, model_admin):
-        filter_list = []
-
-        tag_category, _c = AssetTagCategory.objects.get_or_create(name=self.category)
-        location_tags = AssetTag.objects.filter(category=tag_category).order_by("name")
-        for tag in location_tags:
-            filter_list.append((tag.pk, _(tag.name)))
-
-
-        return filter_list
-
-    def queryset(self, request, queryset):
-        if self.value() is not None:
-            return queryset.filter(tags__id__exact=self.value())
-
-@admin.register(AssetTag)
-class AssetTagAdmin(admin.ModelAdmin):
-    search_fields = ("name", "tag_id",)
-    list_display = (
-        "name",
-        "category",
-    )
-    list_filter = (
-        "category",
-    )
+    @admin.display(description="Total Tagged Assets")
+    def total_assets(self, obj):
+        """
+        Provides a count of all assets with this tag, and includes a hyperlink to the pre-filtered admin asset page for this tag.
+        """
+        num_assets = obj.number_of_tagged_assets()
+        url = reverse("service_desk_admin:assets_asset_changelist", query={f"{obj.category.name.lower()}_tag":obj.pk})
+        return mark_safe(f"<a href='{url}'>{num_assets}</a>")
+        
 
 @admin.register(AssetTagCategory)
 class AssetTagCategoryAdmin(admin.ModelAdmin):
-    search_fields = ("name",)
-    list_display = ("name",)
+    """
+    Provides an admin interface for users to review tags and minor tag statistics.
+    Uses an inline asset tag field to allow for a heirarchical structure.
+    """
+    search_fields = ("name",) 
+    readonly_fields = ("total_tags","total_tagged_assets")
+    list_display = ("category","total_tags","total_tagged_assets")
+    inlines = [AssetTagInline,]
+
+    readonly_fields = ("total_tags",)
+    fields = ("name", "total_tags")
+
+    @admin.display(description="Category")
+    def category(self,obj):
+        return obj.name
+
+    @admin.display(description="Total Tags")
+    def total_tags(self,obj):
+        """
+        Provides a count of all tag values for this tag category.
+        """
+        return obj.number_of_values()
+
+    
+    @admin.display(description="Total Tagged Assets")
+    def total_tagged_assets(self,obj):
+        """
+        Provides a count of all assets tagged with this category, and provides a link to a pre-filtered admin asset page for this tag category.
+        """
+        assets = []
+        total_assets = sum(set([len(x.tagged_assets.all()) for x in obj.tag_values.all()]))
+        url = reverse("service_desk_admin:assets_asset_changelist", query={f"tags__category__id__exact":obj.pk})
+        return mark_safe(f"<a href='{url}'>{total_assets}</a>")
+
+@admin.register(AssetTag)
+class AssetTagAdmin(admin.ModelAdmin):
+    """
+    Registers the tag model with django admin so it can be used in autocomplete fields, but hides it from users.
+    """
+    def get_model_perms(self, request): 
+        return {}
+    search_fields = ("tag_id",)
 
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
-    class DataSourceFilter(admin.SimpleListFilter):
+    class TagFilterTemplate(admin.SimpleListFilter):
         """
-        A custom filter that determines which source imported data came from.
+        A custom tag filter template class to allow for filtering on categorized tags.
+        Child classes must provide a class string variable for title, parameter_name, and category.
         """
-
-        title = _("Source")
-        parameter_name = "data_source"
-
-        def lookups(self, request, model_admin):
-            filter_list = [
-                ("source_tenable", _("Only Tenable")),
-                ("source_defender", _("Only Defender")),
-                ("source_both", _("Both")),
-                ("source_neither", _("Neither")),
-            ]
-
-            return filter_list
-
-        def queryset(self, request, queryset):
-            match self.value():
-                case "source_tenable":
-                    return queryset.filter(defender_data__exact={}).exclude(tenable_data__exact={})
-                case "source_defender":
-                    return queryset.filter(tenable_data__exact={}).exclude(defender_data__exact={})
-                case "source_both":
-                    return queryset.exclude(tenable_data__exact={}).exclude(defender_data__exact={})
-                case "source_neither":
-                    return queryset.filter(defender_data__exact={}).filter(tenable_data__exact={})
-                
-    class ContainedTagsFilter(admin.SimpleListFilter):
-        """
-        A custom filter that allows users to filter by the category of tags present in an asset.
-        """
-
-        title = _("Contained Tag")
-        parameter_name = "contains_tag"
 
         def lookups(self, request, model_admin):
             filter_list = []
 
-            location_tags = AssetTagCategory.objects.all().order_by("name")
+            tag_category, _c = AssetTagCategory.objects.get_or_create(name=self.category)
+            location_tags = AssetTag.objects.filter(category=tag_category).order_by("name")
             for tag in location_tags:
                 filter_list.append((tag.pk, _(tag.name)))
 
@@ -93,25 +88,26 @@ class AssetAdmin(admin.ModelAdmin):
 
         def queryset(self, request, queryset):
             if self.value() is not None:
-                return queryset.filter(tags__category__id__exact=self.value())
+                return queryset.filter(tags__id__exact=self.value())
 
-    # Filters for each of the tag categories
-    # Dynamically creates filter classes for each tag.
-    # tag_filters = tuple([
-    #     type(
-    #         f"{cat.name}Filter",
-    #         (TagFilterTemplate, ), 
-    #         {"title":f"Tag: {cat.name}","parameter_name":f"{cat.name.lower()}_tag","category":cat.name}
-    #     ) 
-    #     for cat in AssetTagCategory.objects.all()
-    # ])
+    def get_list_filter(self, request):
+        """
+        Dynamically creates filter classes from tags found in the db.
+        Allows new tag categories to be created without the need to manually maintain the filters.
+        """
+        self.list_filter = self.list_filter_base + tuple([
+            type(
+                f"{cat.name}Filter",
+                (self.TagFilterTemplate, ), 
+                {"title":f"Tag: {cat.name}","parameter_name":f"{cat.name.lower()}_tag","category":cat.name}
+            ) 
+            for cat in AssetTagCategory.objects.all().order_by("name")
+        ])
 
-    # list_filter = (
-    #     "os",
-    #     DataSourceFilter,
-    #     ContainedTagsFilter,
-    # ) + tag_filters
+        return super().get_list_filter(request)
 
+    # Base filters - Dynamic tag filters are appended to this
+    list_filter_base = ("os", "tags__category")
 
     ordering = ["name"]
     list_display = (
