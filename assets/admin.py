@@ -19,6 +19,7 @@ class AssetTagInline(admin.TabularInline):
         Provides a count of all assets with this tag, and includes a hyperlink to the pre-filtered admin asset page for this tag.
         """
         num_assets = obj.number_of_tagged_assets()
+        # Links to the 'assets' admin page, filtered for assets containing that exact tag value
         url = reverse("service_desk_admin:assets_asset_changelist", query={f"{obj.category.name.lower()}_tag":obj.pk})
         return mark_safe(f"<a href='{url}'>{num_assets}</a>")
         
@@ -56,6 +57,7 @@ class AssetTagCategoryAdmin(admin.ModelAdmin):
         """
         assets = []
         total_assets = sum(set([len(x.tagged_assets.all()) for x in obj.tag_values.all()]))
+        # Links to the 'assets' admin page, filtered for any asset that contains tags of that category
         url = reverse("service_desk_admin:assets_asset_changelist", query={f"tags__category__id__exact":obj.pk})
         return mark_safe(f"<a href='{url}'>{total_assets}</a>")
 

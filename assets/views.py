@@ -4,7 +4,7 @@ from django.views.decorators.cache import cache_control
 from django.conf import settings
 from django.http import JsonResponse
 
-from .models import Asset
+from assets.models import Asset, AssetTag
 
 
 class AssetAPIResource(View):
@@ -14,37 +14,62 @@ class AssetAPIResource(View):
     def get(self, request, *args, **kwargs):
         queryset = (
             Asset.objects.all()
-            .select_related(
-                "owner",
-            )
             .order_by("name")
         )
 
         # Queryset filtering.
-        if "pk" in kwargs and kwargs["pk"]:  # Allow filtering by object PK.
+        # By ID
+        if "pk" in kwargs and kwargs["pk"]:  
             queryset = queryset.filter(pk=kwargs["pk"])
-        if "name" in self.request.GET:  # Allow basic filtering on name.
+        # By name
+        if "name" in self.request.GET:  
             queryset = queryset.filter(name__icontains=self.request.GET["name"])
-        if "owner" in self.request.GET:  # Allow basic filtering on owner.
-            queryset = queryset.filter(owner__name=self.request.GET["owner"])
-        if "os" in self.request.GET:  # Allow basic filtering on os.
+        # By OS
+        if "os" in self.request.GET:
             queryset = queryset.filter(os__icontains=self.request.GET["os"])
+        # By tag - case insensistive exact instead of os & name's "contains"
+        if "tag_cat" in self.request.GET and "tag" in self.request.GET: # By tag within a specific category
+            found_tag = AssetTag.objects.filter(category__name__iexact=self.request.GET["tag_cat"]).filter(name__iexact=self.request.GET["tag"])
+            if found_tag.exists():
+                queryset = queryset.filter(tags=found_tag.first())
+            else:
+                queryset = []
+        elif "tag_cat" in self.request.GET: # By any tag inside a tag category
+            queryset = queryset.filter(tags__category__name__iexact=self.request.GET["tag_cat"])
+        elif "tag" in self.request.GET:  # By a tag across any tag category
+            queryset = queryset.filter(tags__name__iexact=self.request.GET["tag"])
 
-        assets = [
-            {
-                "id": asset.pk,
-                "name": asset.name,
-                "aliases": asset.aliases,
-                "description": asset.description,
-                "contacts": asset.asset_contacts,
-                "systems": asset.associated_systems,
-                "os": asset.os,
-                "os_version": asset.os_version,
-                "defender_data": asset.defender_data,
-                "tenable_data": asset.tenable_data,
-                "tags": asset.display_tags
-            }
-            for asset in queryset
-        ]
+        if "show_tenable_data" in self.request.GET:
+            assets = [
+                {
+                    "id": asset.pk,
+                    "name": asset.name,
+                    "aliases": asset.aliases,
+                    "description": asset.description,
+                    "contacts": asset.asset_contacts,
+                    "systems": asset.associated_systems,
+                    "os": asset.os,
+                    "os_version": asset.os_version,
+                    "defender_data": asset.defender_data,
+                    "tenable_data": asset.tenable_data,
+                    "tags": asset.display_tags
+                }
+                for asset in queryset
+            ]
+        else:
+            assets = [
+                {
+                    "id": asset.pk,
+                    "name": asset.name,
+                    "aliases": asset.aliases,
+                    "description": asset.description,
+                    "contacts": asset.asset_contacts,
+                    "systems": asset.associated_systems,
+                    "os": asset.os,
+                    "os_version": asset.os_version,
+                    "tags": asset.display_tags
+                }
+                for asset in queryset     
+            ]
 
         return JsonResponse(assets, safe=False)
