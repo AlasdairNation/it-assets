@@ -1,20 +1,15 @@
 from django.urls import reverse
 from itassets.test_api import ApiTestCase
-from mixer.backend.django import mixer
 
-from assets.models import Asset, AssetTag
-from organisation.models import DepartmentUser
-from itsystems.models import ITSystemRecord
+from assets.tests.test_model import RandomAssetGenerator as Gen
 
 import json
 
 class AssetsAPITestCase(ApiTestCase):
     def setUp(self):
-        self.asset1 = self.create_random_asset()
+        self.asset1, self.asset2, self.asset3 = Gen().generate(3)
         self.asset1.save()
-        self.asset2 = self.create_random_asset()
         self.asset2.save()
-        self.asset3 = self.create_random_asset()
         self.asset3.save()
 
     def test_populated(self):
@@ -183,18 +178,3 @@ class AssetsAPITestCase(ApiTestCase):
         self.assertNotContains(resp,self.asset1.name)
         self.assertNotContains(resp,self.asset2.name)
         self.assertNotContains(resp,self.asset3.name)
-
-    # Incrementable static variable to allow for unique tenable_ids
-    tenable_id_inc = 0
-    def create_random_asset(self):
-        self.tenable_id_inc += 1
-        return mixer.blend(
-            Asset,
-            tenable_id = self.tenable_id_inc,
-            name = mixer.RANDOM,
-            os = mixer.RANDOM("Windows", "Linux", "MaxOS", "Other"),
-            os_version = mixer.RANDOM,
-            description = mixer.RANDOM("16","24.04","10.1.8","0.0.1"),
-            contacts = mixer.blend(DepartmentUser),
-            systems = mixer.blend(ITSystemRecord),
-        )

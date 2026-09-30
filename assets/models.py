@@ -95,7 +95,6 @@ class Asset(models.Model):
         related_name="related_assets",
         help_text="IT Systems that use this asset",
     ) 
-    # Char field for now, but later could be a Foreign key field, with each OS being added as a distinct object dynamically
     os = models.CharField(
         max_length=255,
         verbose_name="OS",
@@ -230,12 +229,16 @@ class Asset(models.Model):
                 self.aliases = list(set(self.aliases + aliases)) # merges without duplicates
             # Set OS & OS Version
             self.os, self.os_version = self.__split_tenable_os_and_version(t.get("operating_systems")[0]) if t.get("operating_systems") else (None, None)
-            # Set tags
+
+            # Replace tags
+            self.tags = None
             if self.tenable_data.get("tags"):
+                # Add new tags
                 for tag in self.tenable_data.get("tags"):
                     self.add_tag(tag=tag["value"], category=tag["key"])
 
         self.save()
+
 
     def add_tag(self,tag: str, category: str):
         """
@@ -250,7 +253,18 @@ class Asset(models.Model):
             )
             self.tags.add(found_tag)
 
+
+    def remove_tag(self,tag: str, category: str):
+        """
+        Removes a specific tag from an asset.
+        """
+        pass
+
+
     def has_tag(self,tag:str,category:str):
+        """
+        Checks if an asset has a tag.
+        """
         return self.tags.filter(tag_id=f"{tag} - {category}").exists()
         
 
@@ -273,7 +287,6 @@ class Asset(models.Model):
             elif os_string is not None or "":
                 os = os_string
         return os, version
-
 
 
     def __get_tag_category_string(self, category: str) -> str:
