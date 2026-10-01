@@ -176,7 +176,6 @@ class Asset(models.Model):
         return ", ".join([f"{t.category.name}: {t.name}" for t in self.tags.all()])
 
 
-
     def save(self, *args, **kwargs):
         """
         Overrides the default save method.
@@ -221,9 +220,11 @@ class Asset(models.Model):
             if t.get('agent_names'):
                 aliases.extend(t['agent_names'])  
             # Set name & aliases
+            self.aliases = [] # clear aliases
+            self.name = None
             if aliases:
                 self.name = aliases[0]
-                self.aliases = list(set(self.aliases + aliases)) # merges without duplicates
+                self.aliases = list(set(aliases)) # set aliases without duplicates
             # Set OS & OS Version
             self.os, self.os_version = self.__split_tenable_os_and_version(t.get("operating_systems")[0]) if t.get("operating_systems") else (None, None)
 
@@ -244,7 +245,6 @@ class Asset(models.Model):
         if not self.has_tag(tag,category):
             found_category, _ = AssetTagCategory.objects.get_or_create(name=category)
             found_tag, _ = AssetTag.objects.get_or_create(
-                # tag_id = f"{tag} - {category}",
                 name = tag,
                 category = found_category,
             )

@@ -27,10 +27,6 @@ def advanced_hunting_client_token() -> Dict | None:
 
     return token
 
-def get_tenable_key_string():
-    # Manual right now, but could be retrieved dynamically from azure key vault
-    return f"accessKey={os.environ["TENABLE_ACCESS_KEY"]};secretKey={os.environ["TENABLE_SECRET_KEY"]}"
-
 def ms_graph_query_advanced_hunting(query: str, token: Optional[Dict] = None) -> List | None:
     """
     Queries the advanced hunting endpoint for a given query and returns the results as an array of dicts.
@@ -77,12 +73,13 @@ def ms_graph_get_servers(token: Optional[Dict] = None):
     """
     return ms_graph_query_advanced_hunting(query=query, token=token)
 
-def alias_get_or_create(aliases: list, asset_type: str):
+def alias_get_or_create(aliases: list):
     """
     Get or Create an asset based on the list of aliases for that asset.
     Returns a tuple of (Asset <Asset>, Created <bool>).
+    If multiple assets are found, only return the first
     """
     for name in aliases:
         if Asset.objects.filter(aliases__contains=name).exists():
-            return Asset.objects.get(aliases__contains=name), False
-    return Asset.objects.create(name=aliases[0], asset_type=asset_type, last_seen=now()), True
+            return Asset.objects.filter(aliases__contains=name).first(), False
+    return Asset.objects.create(name=aliases[0],aliases=aliases,last_seen=now()), True

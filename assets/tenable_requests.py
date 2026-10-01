@@ -12,39 +12,6 @@ def get_tenable_key_string():
     # Manual right now, but could be retrieved dynamically from azure key vault
     return f"accessKey={os.environ["TENABLE_ACCESS_KEY"]};secretKey={os.environ["TENABLE_SECRET_KEY"]}"
 
-def tenable_list_assets():
-    """
-    Queries the Tenable Rest endpoint to retrieve all registered assets, returned as a dict of the json content.
-    """
-    headers = {
-        "Content-Type": "application/json",
-        "X-APIKeys": get_tenable_key_string()
-    }
-    url = "https://cloud.tenable.com/assets/"
-    resp = requests.get(url,headers=headers)
-    resp.raise_for_status()
-
-    return json.loads(resp.content)
-
-def tenable_get_servers():
-    """
-    Retrieves all tagged servers from the tenable api and their custodian. Returned as a list of tuples [<list<dict>: servers>, <string: custodian>]
-    """
-    custodians = ["OIM", "BCS","BGPA","Fleet","FMB","FSB","GIS","PVS","RFMS","RIA","ZPA"]
-    assets = []
-    headers = {
-        "Content-Type": "application/json",
-        "X-APIKeys": get_tenable_key_string()
-    }
-
-    for custodian in custodians:
-        url = f"https://cloud.tenable.com/workbenches/assets?filter.0.filter=tag.Custodian&filter.0.quality=eq&filter.0.value={cust}"
-        resp = requests.get(url,headers=headers)
-        resp.raise_for_status()
-        assets.append((json.loads(resp.content)['assets'],custodian))
-
-    return assets
-
 def tenable_export_assets() -> list:
     """
     Initiates a Tenable asset export and downloads the result once the export is complete.

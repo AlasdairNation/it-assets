@@ -68,7 +68,8 @@ class AssetTagAdmin(admin.ModelAdmin):
     """
     def get_model_perms(self, request): 
         return {}
-    search_fields = ("tag_id",)
+    search_fields = ("name", "category__name")
+    
 
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
