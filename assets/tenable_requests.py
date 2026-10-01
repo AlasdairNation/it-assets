@@ -126,7 +126,8 @@ def __tenable_initiate_export(automatic_retries: int = 0) -> str | None:
     payload = {
         "include_resource_tags": True,
         "include_open_ports": False,
-        "chunk_size": 1000
+        "chunk_size": 1000,
+        "filters": { "types": ["host","webapp"] }
     }
     headers = {
         "accept": "application/json",

@@ -29,7 +29,10 @@ class AssetAPIResource(View):
             queryset = queryset.filter(os__icontains=self.request.GET["os"])
         # By tag - case insensistive exact instead of os & name's "contains"
         if "tag_cat" in self.request.GET and "tag" in self.request.GET: # By tag within a specific category
-            found_tag = AssetTag.objects.filter(category__name__iexact=self.request.GET["tag_cat"]).filter(name__iexact=self.request.GET["tag"])
+            found_tag = AssetTag.objects.filter(
+                category__name__iexact=self.request.GET["tag_cat"],
+                name__iexact=self.request.GET["tag"]
+                )
             if found_tag.exists():
                 queryset = queryset.filter(tags=found_tag.first())
             else:

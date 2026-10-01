@@ -31,8 +31,11 @@ class AssetTag(models.Model):
     class Meta:
         verbose_name = "Tag Value"
         verbose_name_plural = "Tag Values"
+        # Forces tags to be unique within their own category
+        constraints = [
+            models.UniqueConstraint(fields=["name","category"], name="unique_tag")
+        ]
 
-    tag_id = models.CharField(max_length=255,unique=True, editable=False)
     name = models.CharField(max_length=255, verbose_name="Name")
     category = models.ForeignKey(
         AssetTagCategory,
@@ -42,16 +45,6 @@ class AssetTag(models.Model):
         verbose_name="Tag Category",
         help_text="Tag Category"
     )
-
-    def save(self, *args, **kwargs):
-        """
-        Overrides the default save method.
-        Auto-generates the tag_id.
-        This should also enforce that tags are unique within their category.
-        """
-        self.tag_id = f"{self.name} - {self.category.name}"
-
-        super(AssetTag, self).save(*args, **kwargs)
 
     def number_of_tagged_assets(self) -> int:
         return len(self.tagged_assets.all())
@@ -219,8 +212,12 @@ class Asset(models.Model):
                     aliases.append(t['network']['hostnames'][0].split(".")[0])
                     aliases.extend(t['network']['hostnames']) 
                 if t['network'].get('fqdns'):
-                    aliases.append(t['network']['fqdns'][0].split(".")[0])
-                    aliases.extend(t['network']['fqdns'])
+                    # If it's found through a web app scan, use the FQDN as the primary alias, otherwise treat as normal
+                    if "webapp" in t["types"]:
+                        aliases.extend(t['network']['fqdns'])
+                    else:
+                        aliases.append(t['network']['fqdns'][0].split(".")[0])
+                        aliases.extend(t['network']['fqdns'])
             if t.get('agent_names'):
                 aliases.extend(t['agent_names'])  
             # Set name & aliases
@@ -231,7 +228,7 @@ class Asset(models.Model):
             self.os, self.os_version = self.__split_tenable_os_and_version(t.get("operating_systems")[0]) if t.get("operating_systems") else (None, None)
 
             # Replace tags
-            self.tags = None
+            self.tags.clear()
             if self.tenable_data.get("tags"):
                 # Add new tags
                 for tag in self.tenable_data.get("tags"):
@@ -247,7 +244,7 @@ class Asset(models.Model):
         if not self.has_tag(tag,category):
             found_category, _ = AssetTagCategory.objects.get_or_create(name=category)
             found_tag, _ = AssetTag.objects.get_or_create(
-                tag_id = f"{tag} - {category}",
+                # tag_id = f"{tag} - {category}",
                 name = tag,
                 category = found_category,
             )
@@ -258,14 +255,15 @@ class Asset(models.Model):
         """
         Removes a specific tag from an asset.
         """
-        pass
-
+        if self.has_tag(tag=tag, category=category):
+            self.tags.remove(self.tags.get(name=tag,category__name=category)
+)
 
     def has_tag(self,tag:str,category:str):
         """
         Checks if an asset has a tag.
         """
-        return self.tags.filter(tag_id=f"{tag} - {category}").exists()
+        return self.tags.filter(name=tag, category__name=category).exists()
         
 
     def __split_tenable_os_and_version(self, os_string: str):
@@ -273,7 +271,7 @@ class Asset(models.Model):
         Converts a tenable OS string into an OS & version number.
         Returns a tuple of (OS <string>, version number <string>)
         """
-        os, version = [None, None]
+        os, version = (None, None)
         if os_string:
             version_regex = r"\d+\.\d+(?:\.\d+)?" # Looks for Major.Minor or Major.Minor.Patch
             if "Debian" in os_string:
@@ -290,7 +288,10 @@ class Asset(models.Model):
 
 
     def __get_tag_category_string(self, category: str) -> str:
-        tags = [tag.name for tag in self.tags.filter(category__name=category)]
+        """
+        Gets a display string for all attached tags within a category
+        """
+        tags = [tag.name for tag in self.tags.filter(category__name__iexact=category)]
         return ", ".join(tags)
 
 
