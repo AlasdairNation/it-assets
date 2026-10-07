@@ -52,7 +52,6 @@ class AssetTag(models.Model):
     def __str__(self):
         return f"{self.category.name}: {self.name}"
 
-    
 
 class Asset(models.Model):
     """
@@ -107,6 +106,16 @@ class Asset(models.Model):
             )
         ]          
     )
+    os_list = models.JSONField(
+        default = list,
+        null=True,
+        blank=True
+    )
+    ipv4_list = models.JSONField(
+        default = list,
+        null = True,
+        blank = True
+    )
     first_seen = models.DateTimeField(
         auto_now_add=True, 
         verbose_name="First Seen"
@@ -157,6 +166,14 @@ class Asset(models.Model):
         return displayString
 
     @property
+    def operating_systems(self):
+        return ", ".join(self.os_list)
+
+    @property
+    def ipv4(self):
+        return ", ".join(self.ipv4_list)
+
+    @property
     def custodian(self) -> str:
         """
         Returns a string representation of the custodian tag.
@@ -204,9 +221,10 @@ class Asset(models.Model):
             t = self.tenable_data
             # Set ID
             self.tenable_id = t.get("id")
-            # Retrieve Aliases
+            # Retrieve Aliases & IPv4s
             aliases = []
             if t.get('network'):
+                self.ipv4_list = t['network'].get("ipv4s")
                 if t['network'].get('hostnames'):
                     aliases.append(t['network']['hostnames'][0].split(".")[0])
                     aliases.extend(t['network']['hostnames']) 
@@ -227,6 +245,7 @@ class Asset(models.Model):
                 self.aliases = list(set(aliases)) # set aliases without duplicates
             # Set OS & OS Version
             self.os, self.os_version = self.__split_tenable_os_and_version(t.get("operating_systems")[0]) if t.get("operating_systems") else (None, None)
+            self.os_list = t.get("operating_systems")
 
             # Replace tags
             self.tags.clear()
@@ -300,4 +319,149 @@ class Asset(models.Model):
         Overrides the default __str__ method.
         """
         return str(self.name)
+
+
+class Vulnerability(models.Model):
+    SEVERITY_CHOICES = {
+        0:"Info",
+        1:"Low",
+        2:"Medium",
+        3:"High",
+        4:"Critical"
+    }
+
+    STATE_CHOICES = {
+        "O":"Open",
+        "R":"Reopened",
+        "F":"Fixed"
+    }
+
+    asset = models.ForeignKey(
+        Asset,
+        related_name="asset_vulns",
+        verbose_name="Asset",
+        on_delete=models.CASCADE
+    )
+    output = models.TextField(null=True, blank=True, verbose_name="Output")
+    plugin = models.JSONField(
+        verbose_name="Plugin",
+        default = dict
+    )
+    port = models.JSONField(
+        verbose_name="Port",
+        default = dict
+    )
+    recast_reason = models.TextField(null=True, blank=True, verbose_name="Recast Reason")
+    recast_rule_uuid = models.CharField(max_length=255, null=True, blank=True, verbose_name="Recast Rule UUID")
+    scan = models.JSONField(
+        verbose_name="Scan",
+        default = dict
+    )
+    severity = models.PositiveSmallIntegerField(
+        choices=SEVERITY_CHOICES, 
+        verbose_name="Severity"
+    )
+    severity_default = models.PositiveSmallIntegerField(
+        choices=SEVERITY_CHOICES, 
+        verbose_name="Default Severity"
+    )
+    severity_modification_type = models.CharField(max_length=255, null=True, blank=True, verbose_name="Severity Modification Type")
+    first_found = models.DateField(null=True,blank=True,verbose_name="First Found")
+    last_fixed = models.DateField(null=True,blank=True,verbose_name="Last Fixed")
+    last_found = models.DateField(null=True,blank=True,verbose_name="Last Found")
+    indexed = models.DateField(null=True,blank=True,verbose_name="Indexed")
+    state = models.CharField(
+        max_length=1, 
+        choices=STATE_CHOICES, 
+        verbose_name="State"
+    )
+    source = models.CharField(max_length=255, null=True, blank=True, verbose_name="Source")
+    finding_id = models.CharField(max_length=255, verbose_name="Finding Id")
+    resurfaced_date = models.DateField(null=True,blank=True,verbose_name="Resurfaced Date")
+    time_taken_to_fix = models.IntegerField(null=True,blank=True,verbose_name="Time taken to fix (seconds)")
+    software_vulns = models.JSONField(
+        verbose_name="Software Vulns",
+        default = list
+    )
+    raw_vuln_data = models.JSONField(
+        verbose_name="Raw Vuln Data",
+        default = dict
+    )
+
+    @property
+    def asset_name(self):
+        return self.asset.name
+
+    @property
+    def cve(self):
+        if self.plugin and self.plugin.get("cve"):
+            return ", ".join(self.plugin["cve"])
+
+    @property
+    def cvss3_base_score(self):
+        return self.plugin.get("cvss3_base_score")
+
+    @property
+    def exploitability_ease(self):
+        return self.plugin.get("exploitability_ease")
+
+    @property
+    def exploited_by_malware(self):
+        return self.plugin.get("exploited_by_malware")
+
+    @property
+    def exploited_by_nessus(self):
+        return self.plugin.get("exploited_by_nessus")
     
+    @property
+    def ipv4_addresses(self):
+        return self.asset.ipv4s
+
+    @property
+    def operating_systems(self):
+        return self.asset.operating_systems
+
+    @property
+    def has_patch(self):
+        return self.plugin.get("has_patch")
+
+    @property
+    def patch_publication_date(self):
+        return self.plugin.get("patch_publication_date")
+
+    @property
+    def plugin_description(self):
+        return self.plugin.get("description")
+
+    @property
+    def plugin_family(self):
+        return self.plugin.get("family")
+
+    @property
+    def plugin_id(self):
+        return self.plugin.get("id")
+
+    @property
+    def plugin_name(self):
+        return self.plugin.get("name")
+
+    @property
+    def plugin_output(self):
+        return self.plugin.get("synopsis")
+
+    @property
+    def solution(self):
+        return self.plugin.get("solution")
+
+    @property
+    def vpr(self):
+        return str(self.plugin.get("vpr"))
+
+    @property
+    def vuln_age(self):
+        if self.plugin.get("vpr") and self.plugin["vpr"].get("drivers"):
+            return str(self.plugin["vpr"]["drivers"].get("age_of_vuln"))
+
+    @property
+    def workaround(self):
+        return self.plugin.get("workaround")

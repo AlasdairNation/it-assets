@@ -1,6 +1,7 @@
 import requests
 import json
 import os
+import time
 
 from typing import Dict, List, Optional
 
@@ -83,3 +84,38 @@ def alias_get_or_create(aliases: list):
         if Asset.objects.filter(aliases__contains=name).exists():
             return Asset.objects.filter(aliases__contains=name).first(), False
     return Asset.objects.create(name=aliases[0],aliases=aliases,last_seen=now()), True
+
+def get_with_retry(url: str, headers: dict, retries: int = 3):
+    """
+    Makes a GET web request, retrying 429 errors after sleeping and raising other errors.
+    Retries 429 errors 1 time by default.
+    """
+    request = lambda: requests.get(url, headers=headers)
+    return __wr_with_retry(request,retries)
+
+def post_with_retry(url: str, headers: dict, payload: dict, retries: int = 3):
+    """
+    Makes a Post web request, retrying 429 errors after sleeping and raising other errors.
+    Retries 429 errors 1 time by default.
+    """
+    json_payload = json.dumps(payload)
+    request = lambda: requests.post(url, json=json_payload, headers=headers)
+    return __wr_with_retry(request, retries)
+
+def __wr_with_retry(request, retries: int):
+    """
+    Sends web requests using an inputted lambda, then handles any rate limitting issues.
+    """
+    response = request()
+
+    # Automatically sleep and retry any rate 429 rate limiting responses
+    if response.status_code == 429 and retries > 0:
+        attempts = 0
+        while response.status_code == 429 and retries > attempts:
+            attempts += 1
+            time.sleep(int(response.headers.get('retry-after')))
+            response = request()
+
+    response.raise_for_status()
+
+    return response
