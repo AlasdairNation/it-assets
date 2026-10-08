@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand
 
 from assets.tenable_requests import tenable_export_assets, tenable_export_vulns
 
-from assets.models import Asset
+from assets.models import Asset, Vulnerability
 
 class Command(BaseCommand):
     help = "Synchronises department assets with Tenable assets"
@@ -24,14 +24,11 @@ class Command(BaseCommand):
                 count += 1
                 if self.is_valid_asset(asset):
                     found_asset, created = Asset.objects.get_or_create(tenable_id=asset['id'])
-                    found_asset.update_from_tenable_data(asset)
-                    total_vulns = f"{len(vulns[found_asset.tenable_id])}" if found_asset.tenable_id in vulns else "0"
+                    found_asset.update_from_tenable_data(tenable_data=asset, vuln_data=vulns.get(found_asset.tenable_id))  
                     if created:
-                        logger.info(f"[{count}/{total}]: Created asset {found_asset.pk} - {found_asset.name or ""} | Vulns [{total_vulns}]")
+                        logger.info(f"[{count}/{total}]: Created asset {found_asset.pk} - {found_asset.name or ""} | Vulns [{len(found_asset.get_vulns())}]")
                     else:
-                        logger.info(f"[{count}/{total}]: Updated asset {found_asset.pk} - {found_asset.name or ""} | Vulns [{total_vulns}]")
-                    if total_vulns != "0":
-                        print(vulns[found_asset.tenable_id][0])
+                        logger.info(f"[{count}/{total}]: Updated asset {found_asset.pk} - {found_asset.name or ""} | Vulns [{len(found_asset.get_vulns())}]")
             logger.info(f"Successfully processed {len(assets)} department assets")
         except Exception as exc:
             logger.warning("Failed to sync Tenable assets", exc_info=exc)
@@ -60,7 +57,6 @@ class Command(BaseCommand):
         return valid
 
 
-    # this might be able to just be linked to the above, both could be done at the same time
     def get_asset_vulns(self) -> dict:
         """
         Retrieves vulnerabilities for each asset, returning a the dict of vuln lists per asset uuid {tenable_uuid <str> : [{vuln},]}

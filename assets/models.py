@@ -3,6 +3,7 @@ import re
 from django.db import models
 from django.core.validators import RegexValidator
 from django.utils.timezone import now
+from datetime import datetime
 
 
 from organisation.models import DepartmentUser
@@ -147,18 +148,23 @@ class Asset(models.Model):
         help_text="Tenable Tags"
     )
 
+    # Cached during every sync for better load performance and to enable admin ordering
+    # the use-case doesn't include manually adding or deleting vulns, so this should be fine
+    total_vulns = models.IntegerField(null=True, blank=True, verbose_name="Total Vulns")
+    total_critical_vulns = models.IntegerField(null=True, blank=True, verbose_name="Total Critical Vulns")
+
     @property
-    def asset_contacts(self):
-        """Provides a string display version of contacts for the admin page."""
+    def asset_contacts(self) -> str:
+        """Provides a string representation of all contacts"""
         return ", ".join([str(c) for c in self.contacts.all()])
 
     @property
-    def associated_systems(self):
-        """Provides a string display version of any associated IT Systems for the admin page"""
+    def associated_systems(self) -> str:
+        """Provides a string representation of all associated IT Systems"""
         return ", ".join([str(s) for s in self.systems.all()])
 
     @property
-    def operating_system(self):
+    def operating_system(self) -> str:
         """Provides a combined 'OS - Version' string for display"""
         displayString = self.os or ""
         if self.os_version:
@@ -166,11 +172,13 @@ class Asset(models.Model):
         return displayString
 
     @property
-    def operating_systems(self):
+    def operating_systems(self) -> str:
+        """Provides a string representation of all operating systems"""
         return ", ".join(self.os_list)
 
     @property
-    def ipv4(self):
+    def ipv4(self) -> str:
+        """Returns a string representation of all ipv4 values"""
         return ", ".join(self.ipv4_list)
 
     @property
@@ -190,8 +198,8 @@ class Asset(models.Model):
 
     @property
     def display_tags(self) -> str:
+        """Returns a string representation of each tag"""
         return ", ".join([f"{t.category.name}: {t.name}" for t in self.tags.all()])
-
 
     def save(self, *args, **kwargs):
         """
@@ -206,7 +214,7 @@ class Asset(models.Model):
 
         super(Asset, self).save(*args, **kwargs)
 
-    def update_from_tenable_data(self, tenable_data: dict | None = None):
+    def update_from_tenable_data(self, tenable_data: dict | None = None, vuln_data: list | None = None):
         """
         Updates internal fields using data found in tenable_data.
         If passed tenable_data as a parameter, the model's internal tenable_data is overridden first.
@@ -254,6 +262,17 @@ class Asset(models.Model):
                 for tag in self.tenable_data.get("tags"):
                     self.add_tag(tag=tag["value"], category=tag["key"])
 
+            # Updates vulnerability data
+            self.total_vulns = 0
+            self.total_critical_vulns = 0
+            if vuln_data:
+                for vuln in vuln_data:
+                    self.add_or_update_vuln(vuln)
+
+                self.total_vulns = len(self.vulns.all())
+                self.total_critical_vulns = len(self.vulns.filter(severity=4))
+                
+
         self.save()
 
 
@@ -268,7 +287,40 @@ class Asset(models.Model):
                 category = found_category,
             )
             self.tags.add(found_tag)
+    
+    def add_or_update_vuln(self, vuln: dict):
+        """
+        Creates or updates a vulnerability linked to this asset via a tenable api vuln dict.
+        """
+        if vuln["asset"].get("uuid") == self.tenable_id:
+            new_vuln, created = Vulnerability.objects.get_or_create(
+                finding_id = vuln["finding_id"],
+                defaults={
+                    "asset":self,
+                    "raw_vuln_data":vuln
+                }
+            )
+            new_vuln.update_from_raw_vuln_data()
 
+    def has_vuln(self, finding_id: str) -> bool:
+        """
+        Checks if an asset has a specific vulnerability
+        """
+        return self.get_vulns().filter(finding_id=finding_id).exists()
+
+    def get_vulns(self) -> models.query.QuerySet[Vulnerability]:
+        """
+        Returns a queryset of all vulnerabilities for this asset.
+        """
+        return self.vulns.all()
+
+    def remove_vuln(self, finding_id: str):
+        """
+        Deletes an associated vulnerability
+        """
+        vuln = self.vulns.filter(finding_id=finding_id)
+        if vuln.exists():
+            vuln[0].delete()
 
     def remove_tag(self,tag: str, category: str):
         """
@@ -278,14 +330,14 @@ class Asset(models.Model):
             self.tags.remove(self.tags.get(name=tag,category__name=category)
 )
 
-    def has_tag(self,tag:str,category:str):
+    def has_tag(self,tag:str,category:str) -> bool:
         """
         Checks if an asset has a tag.
         """
         return self.tags.filter(name=tag, category__name=category).exists()
         
 
-    def __split_tenable_os_and_version(self, os_string: str):
+    def __split_tenable_os_and_version(self, os_string: str) -> tuple[str,str]:
         """
         Converts a tenable OS string into an OS & version number.
         Returns a tuple of (OS <string>, version number <string>)
@@ -322,6 +374,10 @@ class Asset(models.Model):
 
 
 class Vulnerability(models.Model):
+    class Meta:
+        verbose_name = "Vulnerability"
+        verbose_name_plural = "Vulnerabilities"
+
     SEVERITY_CHOICES = {
         0:"Info",
         1:"Low",
@@ -338,7 +394,7 @@ class Vulnerability(models.Model):
 
     asset = models.ForeignKey(
         Asset,
-        related_name="asset_vulns",
+        related_name="vulns",
         verbose_name="Asset",
         on_delete=models.CASCADE
     )
@@ -359,24 +415,30 @@ class Vulnerability(models.Model):
     )
     severity = models.PositiveSmallIntegerField(
         choices=SEVERITY_CHOICES, 
-        verbose_name="Severity"
+        verbose_name="Severity",
+        null = True,
+        blank = True
     )
     severity_default = models.PositiveSmallIntegerField(
         choices=SEVERITY_CHOICES, 
-        verbose_name="Default Severity"
+        verbose_name="Default Severity",
+        null = True,
+        blank = True
     )
     severity_modification_type = models.CharField(max_length=255, null=True, blank=True, verbose_name="Severity Modification Type")
-    first_found = models.DateField(null=True,blank=True,verbose_name="First Found")
-    last_fixed = models.DateField(null=True,blank=True,verbose_name="Last Fixed")
-    last_found = models.DateField(null=True,blank=True,verbose_name="Last Found")
-    indexed = models.DateField(null=True,blank=True,verbose_name="Indexed")
+    first_found = models.DateTimeField(null=True,blank=True,verbose_name="First Found")
+    last_fixed = models.DateTimeField(null=True,blank=True,verbose_name="Last Fixed")
+    last_found = models.DateTimeField(null=True,blank=True,verbose_name="Last Found")
+    indexed = models.DateTimeField(null=True,blank=True,verbose_name="Indexed")
     state = models.CharField(
         max_length=1, 
         choices=STATE_CHOICES, 
-        verbose_name="State"
+        verbose_name="State",
+        null = True,
+        blank = True
     )
     source = models.CharField(max_length=255, null=True, blank=True, verbose_name="Source")
-    finding_id = models.CharField(max_length=255, verbose_name="Finding Id")
+    finding_id = models.CharField(max_length=255, unique=True, verbose_name="Finding Id")
     resurfaced_date = models.DateField(null=True,blank=True,verbose_name="Resurfaced Date")
     time_taken_to_fix = models.IntegerField(null=True,blank=True,verbose_name="Time taken to fix (seconds)")
     software_vulns = models.JSONField(
@@ -388,9 +450,45 @@ class Vulnerability(models.Model):
         default = dict
     )
 
+    def update_from_raw_vuln_data(self, raw_vuln_data: dict | None = None):
+        """
+        Updates all fields using raw tenable vulnerability data.
+        If not passed in, the vulnerability's internal raw_vuln_data field is used instead.
+        """
+        if raw_vuln_data is not None:
+            self.raw_vuln_data = raw_vuln_data
+
+        if self.raw_vuln_data:
+            data = self.raw_vuln_data
+            self.output = data.get("output")
+            self.plugin = data.get("plugin",{})
+            self.port = data.get("port",{})
+            self.recast_reason = data.get("recast_reason")
+            self.recast_rule_uuid = data.get("recast_rule_uuid")
+            self.scan = data.get("scan",{})
+            self.severity = data.get("severity_id")
+            self.severity_default = data.get("severity_default_id")
+            self.severity_modification_type = data.get("severity_modification_type")
+            self.first_found = self.__convert_iso(data.get("first_found"))
+            self.last_fixed = self.__convert_iso(data.get("last_fixed"))
+            self.last_found = self.__convert_iso(data.get("last_found"))
+            self.indexed = data.get("indexed")
+            self.state = data["state"][0].upper() if data.get("state") else None
+            self.source = data.get("source")
+            self.finding_id = data.get("finding_id")
+            self.resurfaced_date = self.__convert_iso(data.get("resurfaced_date"))
+            self.time_taken_to_fix = data.get("time_taken_to_fix")
+            self.software_vulns = data.get("software_vulns",[])
+
+        self.save()
+
+    def __convert_iso(self, iso_date: str | None) -> datetime | None:
+        if iso_date:
+            return datetime.fromisoformat(iso_date)
+
     @property
     def asset_name(self):
-        return self.asset.name
+        return self.asset.name  
 
     @property
     def cve(self):

@@ -40,12 +40,14 @@ def tenable_export_vulns() -> list:
         TenableExporter(
             base_url="https://cloud.tenable.com/vulns/export",
             export_payload = {
-                "include_unlicensed": False,
+                "include_unlicensed": True,
                 "num_assets": 1000,
-                "include_software_vulns": True,
+                "include_software_vulns": False,
                 "filters": { 
-                    "last_seen": int((datetime.now()-timedelta(days=1)).timestamp()), # seen within 24 hours
-                    "severity": ["medium", "high", "critical"] # filters out info level vulns
+                    "last_seen": int((datetime.now()-timedelta(days=7)).timestamp()), # seen within 24 hours
+                    "severity": ["low", "medium", "high", "critical"], # filters out info level vulns
+                    "state": ["OPEN", "REOPENED"],
+                    "severity_modification_type": ["NONE", "RECASTED"]
                     } 
             },
             download_headers= {

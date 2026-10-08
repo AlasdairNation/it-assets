@@ -5,7 +5,13 @@ from django.utils.html import mark_safe
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
-from .models import Asset, AssetTagCategory, AssetTag
+from .models import Asset, AssetTagCategory, AssetTag, Vulnerability
+
+class DropdownFilterGeneral(admin.AllValuesFieldListFilter):
+    template ='admin/dropdown_filter.html'
+
+class DropdownFilterRelated(admin.RelatedFieldListFilter):
+    template ='admin/dropdown_filter.html'
 
 class AssetTagInline(admin.TabularInline):
     model = AssetTag
@@ -70,6 +76,32 @@ class AssetTagAdmin(admin.ModelAdmin):
         return {}
     search_fields = ("name", "category__name")
     
+@admin.register(Vulnerability)
+class VulnerabilityAdmin(admin.ModelAdmin):
+    search_fields = (
+        "asset__name",
+        "finding_id",
+        )
+
+    list_display = (
+        "plugin_name",
+        "plugin_family",
+        "asset__name",
+        "state",
+        "severity"
+    )
+
+    list_filter = (
+        ("asset", DropdownFilterRelated),
+        ("state", DropdownFilterGeneral),
+        ("severity", DropdownFilterGeneral),
+    )
+
+    ordering = (
+        "asset__name",
+        "state",
+        "severity"
+    )
 
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
@@ -78,6 +110,8 @@ class AssetAdmin(admin.ModelAdmin):
         A custom tag filter template class to allow for filtering on categorized tags.
         Child classes must provide a class string variable for title, parameter_name, and category.
         """
+
+        template ='admin/dropdown_filter.html'
 
         def lookups(self, request, model_admin):
             filter_list = []
@@ -110,7 +144,7 @@ class AssetAdmin(admin.ModelAdmin):
         return super().get_list_filter(request)
 
     # Base filters - Dynamic tag filters are appended to this
-    list_filter_base = ("os", "tags__category")
+    list_filter_base = (("os",DropdownFilterGeneral), ("tags__category", DropdownFilterRelated))
 
     ordering = ["name"]
     list_display = (
@@ -121,7 +155,9 @@ class AssetAdmin(admin.ModelAdmin):
         "os_version",
         "asset_contacts",
         "associated_systems",
-        "display_tags"
+        "display_tags",
+        "total_vulns",
+        "total_critical_vulns"
     )
     
     search_fields = (
