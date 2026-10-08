@@ -13,6 +13,10 @@ class DropdownFilterGeneral(admin.AllValuesFieldListFilter):
 class DropdownFilterRelated(admin.RelatedFieldListFilter):
     template ='admin/dropdown_filter.html'
 
+class DropdownFilterChoices(admin.ChoicesFieldListFilter):  
+    template ='admin/dropdown_filter.html'
+
+
 class AssetTagInline(admin.TabularInline):
     model = AssetTag
     extra = 0
@@ -93,8 +97,8 @@ class VulnerabilityAdmin(admin.ModelAdmin):
 
     list_filter = (
         ("asset", DropdownFilterRelated),
-        ("state", DropdownFilterGeneral),
-        ("severity", DropdownFilterGeneral),
+        ("state", DropdownFilterChoices),
+        ("severity", DropdownFilterChoices),
     )
 
     ordering = (

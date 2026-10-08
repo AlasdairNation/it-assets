@@ -46,8 +46,8 @@ def tenable_export_vulns() -> list:
                 "filters": { 
                     "last_seen": int((datetime.now()-timedelta(days=7)).timestamp()), # seen within 24 hours
                     "severity": ["low", "medium", "high", "critical"], # filters out info level vulns
-                    "state": ["OPEN", "REOPENED"],
-                    "severity_modification_type": ["NONE", "RECASTED"]
+                    # "state": ["OPEN", "REOPENED"],
+                    # "severity_modification_type": ["NONE", "RECASTED"]
                     } 
             },
             download_headers= {
