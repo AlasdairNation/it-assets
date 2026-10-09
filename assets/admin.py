@@ -5,17 +5,8 @@ from django.utils.html import mark_safe
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
-from .models import Asset, AssetTagCategory, AssetTag, Vulnerability
-
-class DropdownFilterGeneral(admin.AllValuesFieldListFilter):
-    template ='admin/dropdown_filter.html'
-
-class DropdownFilterRelated(admin.RelatedFieldListFilter):
-    template ='admin/dropdown_filter.html'
-
-class DropdownFilterChoices(admin.ChoicesFieldListFilter):  
-    template ='admin/dropdown_filter.html'
-
+from assets.models import Asset, AssetTagCategory, AssetTag, Vulnerability
+from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterChoices, DropdownFilterRelated, DROPDOWN_TEMPLATE
 
 class AssetTagInline(admin.TabularInline):
     model = AssetTag
@@ -115,7 +106,7 @@ class AssetAdmin(admin.ModelAdmin):
         Child classes must provide a class string variable for title, parameter_name, and category.
         """
 
-        template ='admin/dropdown_filter.html'
+        template = DROPDOWN_TEMPLATE
 
         def lookups(self, request, model_admin):
             filter_list = []
@@ -148,7 +139,7 @@ class AssetAdmin(admin.ModelAdmin):
         return super().get_list_filter(request)
 
     # Base filters - Dynamic tag filters are appended to this
-    list_filter_base = (("os",DropdownFilterGeneral), ("tags__category", DropdownFilterRelated))
+    list_filter_base = (("os",DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
 
     ordering = ["name"]
     list_display = (

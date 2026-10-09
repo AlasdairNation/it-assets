@@ -7,6 +7,7 @@ from django.core.exceptions import PermissionDenied
 from django.urls import path
 from django.utils.html import mark_safe
 
+from itassets.admin_filters import DropdownFilterChoices, DropdownFilterBoolean, DROPDOWN_TEMPLATE
 from itassets.utils import ModelDescMixin
 from itsystems.admin import ITSystemRecordAdmin
 from itsystems.models import ITSystemRecord
@@ -43,6 +44,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
     class AssignedLicenceFilter(SimpleListFilter):
         title = "assigned licences"
         parameter_name = "assigned_licences"
+        template = DROPDOWN_TEMPLATE
 
         def lookups(self, request, model_admin):
             return (
@@ -72,7 +74,7 @@ class DepartmentUserAdmin(ModelDescMixin, ModelAdmin):
         "m365_licence",
         "account_type",
     )
-    list_filter = (AssignedLicenceFilter, "active", "account_type")
+    list_filter = (AssignedLicenceFilter, ("active", DropdownFilterBoolean), ("account_type", DropdownFilterChoices))
     model_description = DepartmentUser.__doc__
     search_fields = ("name", "email", "title", "employee_id", "ad_guid", "azure_guid")
     raw_id_fields = ("manager",)
