@@ -5,8 +5,8 @@ from django.test import TestCase, override_settings
 from assets.tenable_requests import tenable_export_assets
 from unittest.mock import patch
 
-class TenableRequestsTestCase(TestCase):
 
+class TenableRequestsTestCase(TestCase):
     def setUp(self):
         logging.disable(logging.CRITICAL)
 
@@ -15,7 +15,7 @@ class TenableRequestsTestCase(TestCase):
     @patch("assets.tenable_requests.TenableExporter.download_export_chunk")
     @patch("assets.tenable_requests.TenableExporter.check_status")
     @patch("assets.tenable_requests.TenableExporter.initiate_export")
-    def test_tenable_export(self,mock_export, mock_status, mock_chunk,mock_sleep):
+    def test_tenable_export(self, mock_export, mock_status, mock_chunk, mock_sleep):
         """
         Tests all reasonable paths of the tenable_export function.
         Uses tenable_export_assets() as the test entry point.
@@ -34,62 +34,55 @@ class TenableRequestsTestCase(TestCase):
         mock_export.assert_called_once()
         mock_status.assert_not_called()
         mock_chunk.assert_not_called()
-        self.assertEqual(assets,[])
+        self.assertEqual(assets, [])
 
         # path 2
         # 2.1 Immediate http error
         mock_export.reset_mock()
         mock_status.reset_mock()
         mock_export.side_effect = None
-        mock_export.return_value = {"export_uuid":"random_uuid"}
+        mock_export.return_value = {"export_uuid": "random_uuid"}
         mock_status.side_effect = HTTPError
         assets = tenable_export_assets()
         mock_export.assert_called_once()
         mock_status.assert_called_once()
         mock_chunk.assert_not_called()
-        self.assertEqual(assets,[])
+        self.assertEqual(assets, [])
 
         # 2.2 failed status_code, then successful with error message
         mock_export.reset_mock()
         mock_status.reset_mock()
         mock_status.side_effect = None
-        mock_export.return_value = {"export_uuid":"random_uuid"}
-        mock_status.side_effect = [
-            {"status":"QUEUED"},
-            {"status":"ERROR"}
-            ]
+        mock_export.return_value = {"export_uuid": "random_uuid"}
+        mock_status.side_effect = [{"status": "QUEUED"}, {"status": "ERROR"}]
         assets = tenable_export_assets()
         mock_export.assert_called_once()
-        self.assertEqual(mock_status.call_count,2)
+        self.assertEqual(mock_status.call_count, 2)
         mock_chunk.assert_not_called()
-        self.assertEqual(assets,[])
+        self.assertEqual(assets, [])
 
         # 2.3 failures run out the loop
         mock_export.reset_mock()
         mock_status.reset_mock()
         mock_export.side_effect = None
-        mock_export.return_value = {"export_uuid":"random_uuid"}
-        mock_status.side_effect = [
-            {"status":"QUEUED"},
-            {"status":"QUEUED"},
-            {"status":"QUEUED"}
-            ]
+        mock_export.return_value = {"export_uuid": "random_uuid"}
+        mock_status.side_effect = [{"status": "QUEUED"}, {"status": "QUEUED"}, {"status": "QUEUED"}]
         assets = tenable_export_assets()
         mock_export.assert_called_once()
-        self.assertEqual(mock_status.call_count,3)
+        self.assertEqual(mock_status.call_count, 3)
         mock_chunk.assert_not_called()
-        self.assertEqual(assets,[])
+        self.assertEqual(assets, [])
 
         # path 3
         # 3.1 Immediate http error
         mock_export.reset_mock()
         mock_status.reset_mock()
         mock_status.side_effect = None
-        mock_export.return_value = {"export_uuid":"random_uuid"}
-        mock_status.return_value = {"status":"FINISHED","chunks_available":[1,2,3]}
+        mock_export.return_value = {"export_uuid": "random_uuid"}
+        mock_status.return_value = {"status": "FINISHED", "chunks_available": [1, 2, 3]}
         mock_chunk.side_effect = HTTPError
         assets = tenable_export_assets()
-        self.assertEqual(assets,[])
+        self.assertEqual(assets, [])
         mock_export.assert_called_once()
         mock_status.assert_called_once()
         mock_chunk.assert_called_once()
@@ -100,11 +93,11 @@ class TenableRequestsTestCase(TestCase):
         mock_chunk.reset_mock()
         mock_chunk.side_effect = None
         mock_status.side_effect = None
-        mock_export.return_value = {"export_uuid":"random_uuid"}
-        mock_status.return_value = {"status":"FINISHED","chunks_available":[1,2,3]}
-        mock_chunk.side_effect = ["a","b","c"]
+        mock_export.return_value = {"export_uuid": "random_uuid"}
+        mock_status.return_value = {"status": "FINISHED", "chunks_available": [1, 2, 3]}
+        mock_chunk.side_effect = ["a", "b", "c"]
         assets = tenable_export_assets()
         mock_export.assert_called_once()
         mock_status.assert_called_once()
-        self.assertEqual(mock_chunk.call_count,3)
-        self.assertEqual(assets,["a","b","c"])
+        self.assertEqual(mock_chunk.call_count, 3)
+        self.assertEqual(assets, ["a", "b", "c"])

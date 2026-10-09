@@ -27,15 +27,13 @@ class AssetTagCategory(models.Model):
     def __str__(self):
         return self.name
 
-    
+
 class AssetTag(models.Model):
     class Meta:
         verbose_name = "Tag Value"
         verbose_name_plural = "Tag Values"
         # Forces tags to be unique within their own category
-        constraints = [
-            models.UniqueConstraint(fields=["name","category"], name="unique_tag")
-        ]
+        constraints = [models.UniqueConstraint(fields=["name", "category"], name="unique_tag")]
 
     name = models.CharField(max_length=255, verbose_name="Name")
     category = models.ForeignKey(
@@ -44,7 +42,7 @@ class AssetTag(models.Model):
         default=AssetTagCategory.get_default_pk,
         related_name="tag_values",
         verbose_name="Tag Category",
-        help_text="Tag Category"
+        help_text="Tag Category",
     )
 
     def number_of_tagged_assets(self) -> int:
@@ -66,20 +64,14 @@ class Asset(models.Model):
 
     tenable_id = models.CharField(max_length=255, unique=True, verbose_name="tenable_id", editable=False)
     name = models.CharField(max_length=255, unique=False, null=True, blank=True, verbose_name="Name")
-    aliases = models.JSONField(
-        verbose_name="Alternate names",
-        default = list,
-        null = True,
-        blank = True,
-        editable = False
-    )
+    aliases = models.JSONField(verbose_name="Alternate names", default=list, null=True, blank=True, editable=False)
     description = models.TextField(null=True, blank=True, verbose_name="Description")
     contacts = models.ManyToManyField(
         DepartmentUser,
         blank=True,
         verbose_name="Contacts",
         related_name="asset_contact_of",
-        help_text="The department user(s) to contact for a technical request"
+        help_text="The department user(s) to contact for a technical request",
     )
     systems = models.ManyToManyField(
         ITSystemRecord,
@@ -87,49 +79,30 @@ class Asset(models.Model):
         verbose_name="Associated IT Systems",
         related_name="related_assets",
         help_text="IT Systems that use this asset",
-    ) 
-    os = models.CharField(
-        max_length=255,
-        verbose_name="OS",
-        null=True,
-        blank=True
     )
+    os = models.CharField(max_length=255, verbose_name="OS", null=True, blank=True)
     os_version = models.CharField(
         max_length=255,
         verbose_name="OS Version",
         null=True,
         blank=True,
-        validators= [
+        validators=[
             RegexValidator(
                 regex=r"^(?:$|(?:(\d+)\.)?(?:(\d+)\.)?(\d+))$",
                 message="Invalid OS Version formatting. Please use format Int[.Int[.Int]], ie; '24.04', '12.6.03', etc).",
-                code="invalid_os_version"
+                code="invalid_os_version",
             )
-        ]          
+        ],
     )
-    os_list = models.JSONField(
-        default = list,
-        null=True,
-        blank=True
-    )
-    ipv4_list = models.JSONField(
-        default = list,
-        null = True,
-        blank = True
-    )
-    first_seen = models.DateTimeField(
-        auto_now_add=True, 
-        verbose_name="First Seen"
-    )
+    os_list = models.JSONField(default=list, null=True, blank=True)
+    ipv4_list = models.JSONField(default=list, null=True, blank=True)
+    first_seen = models.DateTimeField(auto_now_add=True, verbose_name="First Seen")
     last_seen = models.DateTimeField(
         verbose_name="Last Seen",
         null=True,
         blank=True,
     )
-    last_modified = models.DateTimeField(
-        auto_now=True,
-        verbose_name="Last Modified"
-    )
+    last_modified = models.DateTimeField(auto_now=True, verbose_name="Last Modified")
     defender_data = models.JSONField(
         default=dict,
         null=True,
@@ -140,13 +113,7 @@ class Asset(models.Model):
         null=True,
         blank=True,
     )
-    tags = models.ManyToManyField(
-        AssetTag,
-        blank=True,
-        verbose_name="Tags",
-        related_name="tagged_assets",
-        help_text="Tenable Tags"
-    )
+    tags = models.ManyToManyField(AssetTag, blank=True, verbose_name="Tags", related_name="tagged_assets", help_text="Tenable Tags")
 
     # Cached during every sync for better load performance and to enable admin ordering
     # the use-case doesn't include manually adding or deleting vulns, so this should be fine
@@ -188,7 +155,6 @@ class Asset(models.Model):
         """
         return self.__get_tag_category_string("Custodian")
 
-        
     @property
     def asset_type(self) -> str:
         """
@@ -231,28 +197,30 @@ class Asset(models.Model):
             self.tenable_id = t.get("id")
             # Retrieve Aliases & IPv4s
             aliases = []
-            if t.get('network'):
-                self.ipv4_list = t['network'].get("ipv4s")
-                if t['network'].get('hostnames'):
-                    aliases.append(t['network']['hostnames'][0].split(".")[0])
-                    aliases.extend(t['network']['hostnames']) 
-                if t['network'].get('fqdns'):
+            if t.get("network"):
+                self.ipv4_list = t["network"].get("ipv4s")
+                if t["network"].get("hostnames"):
+                    aliases.append(t["network"]["hostnames"][0].split(".")[0])
+                    aliases.extend(t["network"]["hostnames"])
+                if t["network"].get("fqdns"):
                     # If it's found through a web app scan, use the FQDN as the primary alias, otherwise treat as normal
                     if "webapp" in t["types"]:
-                        aliases.extend(t['network']['fqdns'])
+                        aliases.extend(t["network"]["fqdns"])
                     else:
-                        aliases.append(t['network']['fqdns'][0].split(".")[0])
-                        aliases.extend(t['network']['fqdns'])
-            if t.get('agent_names'):
-                aliases.extend(t['agent_names'])  
+                        aliases.append(t["network"]["fqdns"][0].split(".")[0])
+                        aliases.extend(t["network"]["fqdns"])
+            if t.get("agent_names"):
+                aliases.extend(t["agent_names"])
             # Set name & aliases
-            self.aliases = [] # clear aliases
+            self.aliases = []  # clear aliases
             self.name = None
             if aliases:
                 self.name = aliases[0]
-                self.aliases = list(set(aliases)) # set aliases without duplicates
+                self.aliases = list(set(aliases))  # set aliases without duplicates
             # Set OS & OS Version
-            self.os, self.os_version = self.__split_tenable_os_and_version(t.get("operating_systems")[0]) if t.get("operating_systems") else (None, None)
+            self.os, self.os_version = (
+                self.__split_tenable_os_and_version(t.get("operating_systems")[0]) if t.get("operating_systems") else (None, None)
+            )
             self.os_list = t.get("operating_systems")
 
             # Replace tags
@@ -271,34 +239,28 @@ class Asset(models.Model):
 
                 self.total_vulns = len(self.vulns.all())
                 self.total_critical_vulns = len(self.vulns.filter(severity=4))
-                
 
         self.save()
 
-
-    def add_tag(self,tag: str, category: str):
+    def add_tag(self, tag: str, category: str):
         """
         Adds a tag to an asset. If the tag and/or category doesn't exist, they're created.
         """
-        if not self.has_tag(tag,category):
+        if not self.has_tag(tag, category):
             found_category, _ = AssetTagCategory.objects.get_or_create(name=category)
             found_tag, _ = AssetTag.objects.get_or_create(
-                name = tag,
-                category = found_category,
+                name=tag,
+                category=found_category,
             )
             self.tags.add(found_tag)
-    
+
     def add_or_update_vuln(self, vuln: dict):
         """
         Creates or updates a vulnerability linked to this asset via a tenable api vuln dict.
         """
         if vuln["asset"].get("uuid") == self.tenable_id:
             new_vuln, created = Vulnerability.objects.get_or_create(
-                finding_id = vuln["finding_id"],
-                defaults={
-                    "asset":self,
-                    "raw_vuln_data":vuln
-                }
+                finding_id=vuln["finding_id"], defaults={"asset": self, "raw_vuln_data": vuln}
             )
             new_vuln.update_from_raw_vuln_data()
 
@@ -308,7 +270,7 @@ class Asset(models.Model):
         """
         return self.get_vulns().filter(finding_id=finding_id).exists()
 
-    def get_vulns(self) -> models.query.QuerySet[Vulnerability]:
+    def get_vulns(self) -> models.query.QuerySet:
         """
         Returns a queryset of all vulnerabilities for this asset.
         """
@@ -322,33 +284,31 @@ class Asset(models.Model):
         if vuln.exists():
             vuln[0].delete()
 
-    def remove_tag(self,tag: str, category: str):
+    def remove_tag(self, tag: str, category: str):
         """
         Removes a specific tag from an asset.
         """
         if self.has_tag(tag=tag, category=category):
-            self.tags.remove(self.tags.get(name=tag,category__name=category)
-)
+            self.tags.remove(self.tags.get(name=tag, category__name=category))
 
-    def has_tag(self,tag:str,category:str) -> bool:
+    def has_tag(self, tag: str, category: str) -> bool:
         """
         Checks if an asset has a tag.
         """
         return self.tags.filter(name=tag, category__name=category).exists()
-        
 
-    def __split_tenable_os_and_version(self, os_string: str) -> tuple[str,str]:
+    def __split_tenable_os_and_version(self, os_string: str) -> tuple[str, str]:
         """
         Converts a tenable OS string into an OS & version number.
         Returns a tuple of (OS <string>, version number <string>)
         """
         os, version = (None, None)
         if os_string:
-            version_regex = r"\d+\.\d+(?:\.\d+)?" # Looks for Major.Minor or Major.Minor.Patch
+            version_regex = r"\d+\.\d+(?:\.\d+)?"  # Looks for Major.Minor or Major.Minor.Patch
             if "Debian" in os_string:
-                version_regex = r"\d{1,2}" # Looks only for Major
-            match = re.search(version_regex,os_string)
-            if match: 
+                version_regex = r"\d{1,2}"  # Looks only for Major
+            match = re.search(version_regex, os_string)
+            if match:
                 os = re.split(version_regex, os_string)[0].strip()
                 version = match.group().strip()
             elif "Build" in os_string:
@@ -357,14 +317,12 @@ class Asset(models.Model):
                 os = os_string
         return os, version
 
-
     def __get_tag_category_string(self, category: str) -> str:
         """
         Gets a display string for all attached tags within a category
         """
         tags = [tag.name for tag in self.tags.filter(category__name__iexact=category)]
         return ", ".join(tags)
-
 
     def __str__(self):
         """
@@ -378,77 +336,31 @@ class Vulnerability(models.Model):
         verbose_name = "Vulnerability"
         verbose_name_plural = "Vulnerabilities"
 
-    SEVERITY_CHOICES = {
-        0:"Info",
-        1:"Low",
-        2:"Medium",
-        3:"High",
-        4:"Critical"
-    }
+    SEVERITY_CHOICES = {0: "Info", 1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
 
-    STATE_CHOICES = {
-        "O":"Open",
-        "R":"Reopened",
-        "F":"Fixed"
-    }
+    STATE_CHOICES = {"O": "Open", "R": "Reopened", "F": "Fixed"}
 
-    asset = models.ForeignKey(
-        Asset,
-        related_name="vulns",
-        verbose_name="Asset",
-        on_delete=models.CASCADE
-    )
+    asset = models.ForeignKey(Asset, related_name="vulns", verbose_name="Asset", on_delete=models.CASCADE)
     output = models.TextField(null=True, blank=True, verbose_name="Output")
-    plugin = models.JSONField(
-        verbose_name="Plugin",
-        default = dict
-    )
-    port = models.JSONField(
-        verbose_name="Port",
-        default = dict
-    )
+    plugin = models.JSONField(verbose_name="Plugin", default=dict)
+    port = models.JSONField(verbose_name="Port", default=dict)
     recast_reason = models.TextField(null=True, blank=True, verbose_name="Recast Reason")
     recast_rule_uuid = models.CharField(max_length=255, null=True, blank=True, verbose_name="Recast Rule UUID")
-    scan = models.JSONField(
-        verbose_name="Scan",
-        default = dict
-    )
-    severity = models.PositiveSmallIntegerField(
-        choices=SEVERITY_CHOICES, 
-        verbose_name="Severity",
-        null = True,
-        blank = True
-    )
-    severity_default = models.PositiveSmallIntegerField(
-        choices=SEVERITY_CHOICES, 
-        verbose_name="Default Severity",
-        null = True,
-        blank = True
-    )
+    scan = models.JSONField(verbose_name="Scan", default=dict)
+    severity = models.PositiveSmallIntegerField(choices=SEVERITY_CHOICES, verbose_name="Severity", null=True, blank=True)
+    severity_default = models.PositiveSmallIntegerField(choices=SEVERITY_CHOICES, verbose_name="Default Severity", null=True, blank=True)
     severity_modification_type = models.CharField(max_length=255, null=True, blank=True, verbose_name="Severity Modification Type")
-    first_found = models.DateTimeField(null=True,blank=True,verbose_name="First Found")
-    last_fixed = models.DateTimeField(null=True,blank=True,verbose_name="Last Fixed")
-    last_found = models.DateTimeField(null=True,blank=True,verbose_name="Last Found")
-    indexed = models.DateTimeField(null=True,blank=True,verbose_name="Indexed")
-    state = models.CharField(
-        max_length=1, 
-        choices=STATE_CHOICES, 
-        verbose_name="State",
-        null = True,
-        blank = True
-    )
+    first_found = models.DateTimeField(null=True, blank=True, verbose_name="First Found")
+    last_fixed = models.DateTimeField(null=True, blank=True, verbose_name="Last Fixed")
+    last_found = models.DateTimeField(null=True, blank=True, verbose_name="Last Found")
+    indexed = models.DateTimeField(null=True, blank=True, verbose_name="Indexed")
+    state = models.CharField(max_length=1, choices=STATE_CHOICES, verbose_name="State", null=True, blank=True)
     source = models.CharField(max_length=255, null=True, blank=True, verbose_name="Source")
     finding_id = models.CharField(max_length=255, unique=True, verbose_name="Finding Id")
-    resurfaced_date = models.DateField(null=True,blank=True,verbose_name="Resurfaced Date")
-    time_taken_to_fix = models.IntegerField(null=True,blank=True,verbose_name="Time taken to fix (seconds)")
-    software_vulns = models.JSONField(
-        verbose_name="Software Vulns",
-        default = list
-    )
-    raw_vuln_data = models.JSONField(
-        verbose_name="Raw Vuln Data",
-        default = dict
-    )
+    resurfaced_date = models.DateField(null=True, blank=True, verbose_name="Resurfaced Date")
+    time_taken_to_fix = models.IntegerField(null=True, blank=True, verbose_name="Time taken to fix (seconds)")
+    software_vulns = models.JSONField(verbose_name="Software Vulns", default=list)
+    raw_vuln_data = models.JSONField(verbose_name="Raw Vuln Data", default=dict)
 
     def update_from_raw_vuln_data(self, raw_vuln_data: dict | None = None):
         """
@@ -461,11 +373,11 @@ class Vulnerability(models.Model):
         if self.raw_vuln_data:
             data = self.raw_vuln_data
             self.output = data.get("output")
-            self.plugin = data.get("plugin",{})
-            self.port = data.get("port",{})
+            self.plugin = data.get("plugin", {})
+            self.port = data.get("port", {})
             self.recast_reason = data.get("recast_reason")
             self.recast_rule_uuid = data.get("recast_rule_uuid")
-            self.scan = data.get("scan",{})
+            self.scan = data.get("scan", {})
             self.severity = data.get("severity_id")
             self.severity_default = data.get("severity_default_id")
             self.severity_modification_type = data.get("severity_modification_type")
@@ -478,7 +390,7 @@ class Vulnerability(models.Model):
             self.finding_id = data.get("finding_id")
             self.resurfaced_date = self.__convert_iso(data.get("resurfaced_date"))
             self.time_taken_to_fix = data.get("time_taken_to_fix")
-            self.software_vulns = data.get("software_vulns",[])
+            self.software_vulns = data.get("software_vulns", [])
 
         self.save()
 
@@ -488,7 +400,7 @@ class Vulnerability(models.Model):
 
     @property
     def asset_name(self):
-        return self.asset.name  
+        return self.asset.name
 
     @property
     def cve(self):
@@ -510,7 +422,7 @@ class Vulnerability(models.Model):
     @property
     def exploited_by_nessus(self):
         return self.plugin.get("exploited_by_nessus")
-    
+
     @property
     def ipv4_addresses(self):
         return self.asset.ipv4s

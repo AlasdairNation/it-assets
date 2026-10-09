@@ -12,32 +12,26 @@ class AssetAPIResource(View):
 
     @method_decorator(cache_control(max_age=settings.API_RESPONSE_CACHE_SECONDS, private=True))
     def get(self, request, *args, **kwargs):
-        queryset = (
-            Asset.objects.all()
-            .order_by("name")
-        )
+        queryset = Asset.objects.all().order_by("name")
 
         # Queryset filtering.
         # By ID
-        if "pk" in kwargs and kwargs["pk"]:  
+        if "pk" in kwargs and kwargs["pk"]:
             queryset = queryset.filter(pk=kwargs["pk"])
         # By name
-        if "name" in self.request.GET:  
+        if "name" in self.request.GET:
             queryset = queryset.filter(name__icontains=self.request.GET["name"])
         # By OS
         if "os" in self.request.GET:
             queryset = queryset.filter(os__icontains=self.request.GET["os"])
         # By tag - case insensistive exact instead of os & name's "contains"
-        if "tag_cat" in self.request.GET and "tag" in self.request.GET: # By tag within a specific category
-            found_tag = AssetTag.objects.filter(
-                category__name__iexact=self.request.GET["tag_cat"],
-                name__iexact=self.request.GET["tag"]
-                )
+        if "tag_cat" in self.request.GET and "tag" in self.request.GET:  # By tag within a specific category
+            found_tag = AssetTag.objects.filter(category__name__iexact=self.request.GET["tag_cat"], name__iexact=self.request.GET["tag"])
             if found_tag.exists():
                 queryset = queryset.filter(tags=found_tag.first())
             else:
                 queryset = []
-        elif "tag_cat" in self.request.GET: # By any tag inside a tag category
+        elif "tag_cat" in self.request.GET:  # By any tag inside a tag category
             queryset = queryset.filter(tags__category__name__iexact=self.request.GET["tag_cat"])
         elif "tag" in self.request.GET:  # By a tag across any tag category
             queryset = queryset.filter(tags__name__iexact=self.request.GET["tag"])
@@ -55,7 +49,7 @@ class AssetAPIResource(View):
                     "os_version": asset.os_version,
                     "defender_data": asset.defender_data,
                     "tenable_data": asset.tenable_data,
-                    "tags": asset.display_tags
+                    "tags": asset.display_tags,
                 }
                 for asset in queryset
             ]
@@ -70,9 +64,9 @@ class AssetAPIResource(View):
                     "systems": asset.associated_systems,
                     "os": asset.os,
                     "os_version": asset.os_version,
-                    "tags": asset.display_tags
+                    "tags": asset.display_tags,
                 }
-                for asset in queryset     
+                for asset in queryset
             ]
 
         return JsonResponse(assets, safe=False)

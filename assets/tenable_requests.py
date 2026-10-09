@@ -10,54 +10,107 @@ from assets.utils import get_with_retry, post_with_retry
 
 LOGGER = logging.getLogger("assets")
 
+
 def get_tenable_key_string():
     # Manual right now, but could be retrieved dynamically from azure key vault
-    return f"accessKey={os.environ["TENABLE_ACCESS_KEY"]};secretKey={os.environ["TENABLE_SECRET_KEY"]}"
+    return f"accessKey={os.environ['TENABLE_ACCESS_KEY']};secretKey={os.environ['TENABLE_SECRET_KEY']}"
+
+
+class TenableExporter:
+    """
+    Provides a class for handling tenable export web requests.
+    """
+
+    KEY = get_tenable_key_string()
+    DEFAULT_EXPORT_HEADERS = {"accept": "application/json", "content-type": "application/json", "X-ApiKeys": KEY}
+    DEFAULT_CHECK_AND_DOWNLOAD_HEADERS = {"accept": "application/json", "X-ApiKeys": KEY}
+
+    def __init__(self, base_url, export_payload, export_headers=None, check_headers=None, download_headers=None, alt_export_url=None):
+        self.base_url = base_url  # Mandatory
+        self.export_payload = export_payload  # Mandatory
+        self.alt_export_url = alt_export_url  # Optional
+        self.export_headers = export_headers if export_headers else self.DEFAULT_EXPORT_HEADERS
+        self.check_headers = check_headers if check_headers else self.DEFAULT_CHECK_AND_DOWNLOAD_HEADERS
+        self.download_headers = download_headers if download_headers else self.DEFAULT_CHECK_AND_DOWNLOAD_HEADERS
+
+    def initiate_export(self, retries: int = 0) -> dict | None:
+        """
+        Queries the Tenable Nessus endpoint to initate an export of all recorded assets, and returns the export uuid.
+        If an automatic_retries number is specified, any 429 errors will automatically retry that many times.
+        """
+        url = self.alt_export_url if self.alt_export_url else self.base_url
+        response = post_with_retry(url=url, headers=self.export_headers, payload=self.export_payload, retries=3)
+
+        return json.loads(response.content)
+
+    def check_status(self, export_uuid: str, retries: int = 3) -> dict | None:
+        url = f"{self.base_url}/{export_uuid}/status"
+        response = get_with_retry(url=url, headers=self.check_headers, retries=retries)
+
+        return json.loads(response.content)
+
+    def download_export_chunk(self, export_uuid: str, chunk_id: int, retries: int = 3) -> list | None:
+        """
+        Queries the Tenable Nessus endpoint to retrieve a chunk of the asset export.
+        Returns a list of dicts representing the assets.
+        """
+        url = f"{self.base_url}/{export_uuid}/chunks/{chunk_id}"
+
+        response = get_with_retry(url=url, headers=self.download_headers, retries=retries)
+
+        if "json" in self.download_headers["accept"]:
+            return json.loads(response.content)
+        elif "octet" in self.download_headers["accept"]:
+            return json.loads(response.text)
+
 
 def tenable_export_assets() -> list:
     """
     Initiates a Tenable asset export and downloads the result once the export is complete.
     """
-    keys = get_tenable_key_string()
     return tenable_export(
+        # Pass through a TenableExporter populated for the asset endpoints
         TenableExporter(
             base_url="https://cloud.tenable.com/assets/export",
             alt_export_url="https://cloud.tenable.com/assets/v2/export",
-            export_payload = {
+            export_payload={
                 "include_resource_tags": True,
                 "include_open_ports": False,
                 "chunk_size": 1000,
-                "filters": { "types": ["host","webapp"] }
-            }
+                "filters": {"types": ["host", "webapp"]},
+            },
         )
     )
+
 
 def tenable_export_vulns() -> list:
     """
     Initiates a Tenable vulnerability export and downloads the result once the export is complete.
     """
     return tenable_export(
+        # Pass through a TenableExporter populated for the vulnerability endpoints
         TenableExporter(
             base_url="https://cloud.tenable.com/vulns/export",
-            export_payload = {
+            export_payload={
                 "include_unlicensed": True,
                 "num_assets": 1000,
                 "include_software_vulns": False,
-                "filters": { 
-                    "last_seen": int((datetime.now()-timedelta(days=7)).timestamp()), # seen within 24 hours
-                    "severity": ["low", "medium", "high", "critical"], # filters out info level vulns
+                "filters": {
+                    "last_seen": int((datetime.now() - timedelta(days=7)).timestamp()),  # seen within 24 hours
+                    "severity": ["low", "medium", "high", "critical"],  # filters out info level vulns
                     # "state": ["OPEN", "REOPENED"],
                     # "severity_modification_type": ["NONE", "RECASTED"]
-                    } 
+                },
             },
-            download_headers= {
-                "accept": "application/octet-stream",
-                "X-ApiKeys": get_tenable_key_string()
-            }
+            download_headers={"accept": "application/octet-stream", "X-ApiKeys": get_tenable_key_string()},
         )
     )
 
-def tenable_export(exporter: TenableExporter) ->list:
+
+def tenable_export(exporter: TenableExporter) -> list:
+    """
+    Queries the tenable API using a TenableExporter, returning the results of the export as a list of dicts.
+    """
     exports = []
     export_uuid = None
     chunks_available = []
@@ -84,29 +137,35 @@ def tenable_export(exporter: TenableExporter) ->list:
                 status = response.get("status") if response else None
                 # Sleeps if export is still in process, else reports the result and exits the loop
                 match status:
-                    case "QUEUED" | "PROCESSING": # Export still in process - Wait for <TENABLE_EXPORT_CHECK_DELAY> seconds
-                        LOGGER.info(f"Attempt [{i}/{limit}]: Export status [{status}] - Sleeping for {settings.TENABLE_EXPORT_CHECK_DELAY} seconds...")
+                    case "QUEUED" | "PROCESSING":  # Export still in process - Wait for <TENABLE_EXPORT_CHECK_DELAY> seconds
+                        LOGGER.info(
+                            f"Attempt [{i}/{limit}]: Export status [{status}] - Sleeping for {settings.TENABLE_EXPORT_CHECK_DELAY} seconds..."
+                        )
                         time.sleep(settings.TENABLE_EXPORT_CHECK_DELAY)
-                    case "FINISHED": # Export finished 
-                        chunks_available = response.get("chunks_available",[])
-                        LOGGER.info(f"Attempt [{i}/{limit}]: Export status [{status}] - {len(chunks_available)} chunks available for download")
+                    case "FINISHED":  # Export finished
+                        chunks_available = response.get("chunks_available", [])
+                        LOGGER.info(
+                            f"Attempt [{i}/{limit}]: Export status [{status}] - {len(chunks_available)} chunks available for download"
+                        )
                         break
-                    case "ERROR": # Tenable ran into an error while exporting
-                        LOGGER.warning(f"Attempt [{i}/{limit}]: Export status [{status}] - ERROR: {response.get("reason", "Unknown Error, response did not contain error message")}")
+                    case "ERROR":  # Tenable ran into an error while exporting
+                        LOGGER.warning(
+                            f"Attempt [{i}/{limit}]: Export status [{status}] - ERROR: {response.get('reason', 'Unknown Error, response did not contain error message')}"
+                        )
                         break
-                    case "CANCELLED": # Export was cancelled by admin - Likely rare to happen, but worth accounting for
+                    case "CANCELLED":  # Export was cancelled by admin - Likely rare to happen, but worth accounting for
                         LOGGER.warning(f"Attempt [{i}/{limit}]: Export status [{status}] - request cancelled by an administrator")
                         break
-                    case _: # initiate asset export returned empty
+                    case _:  # initiate asset export returned empty
                         LOGGER.warning(f"Attempt [{i}/{limit}]: Failed to export Tenable data - Empty return value from status check")
                         break
             except requests.exceptions.HTTPError as exc:
-                LOGGER.warning(f"Failed to export Tenable data - exception raised during status check", exc_info=exc)
-                break    
+                LOGGER.warning(f"Attempt [{i}/{limit}]: Failed to export Tenable data - exception raised during status check", exc_info=exc)
+                break
 
     # Downloads export chunks
     chunks_downloaded = 0
-    if len(chunks_available)>0:
+    if len(chunks_available) > 0:
         LOGGER.info(f"Downloading {len(chunks_available)} chunks...")
         for chunk_id in chunks_available:
             try:
@@ -121,55 +180,8 @@ def tenable_export(exporter: TenableExporter) ->list:
                 LOGGER.warning(f"Failed to download chunk {chunk_id} - exception raised during status check", exc_info=exc)
                 break
 
-        LOGGER.info(f"""Download complete: Chunks downloaded - {chunks_downloaded}/{len(chunks_available)} | items downloaded - {len(exports)}""")
+        LOGGER.info(
+            f"""Download complete: Chunks downloaded - {chunks_downloaded}/{len(chunks_available)} | items downloaded - {len(exports)}"""
+        )
 
     return exports
-
-class TenableExporter():
-    KEY = get_tenable_key_string()
-    DEFAULT_EXPORT_HEADERS = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "X-ApiKeys": KEY
-    }
-    DEFAULT_CHECK_AND_DOWNLOAD_HEADERS = {
-        "accept": "application/json",
-        "X-ApiKeys": KEY
-    }
-    def __init__(self, base_url, export_payload, export_headers = None, check_headers = None, download_headers = None, alt_export_url = None):
-        self.base_url = base_url # Mandatory
-        self.export_payload = export_payload # Mandatory
-        self.alt_export_url = alt_export_url # Optional
-        self.export_headers = export_headers if export_headers else self.DEFAULT_EXPORT_HEADERS
-        self.check_headers = check_headers if check_headers else self.DEFAULT_CHECK_AND_DOWNLOAD_HEADERS
-        self.download_headers = download_headers if download_headers else self.DEFAULT_CHECK_AND_DOWNLOAD_HEADERS
-
-    def initiate_export(self, retries: int = 0) -> dict | None:
-        """
-        Queries the Tenable Nessus endpoint to initate an export of all recorded assets, and returns the export uuid.
-        If an automatic_retries number is specified, any 429 errors will automatically retry that many times.
-        """
-        url = self.alt_export_url if self.alt_export_url else self.base_url
-        response = post_with_retry(url=url, headers=self.export_headers, payload=self.export_payload, retries=3)
-        
-        return json.loads(response.content)
-
-    def check_status(self,export_uuid: str, retries: int = 3) -> dict | None:
-        url = f"{self.base_url}/{export_uuid}/status"
-        response = get_with_retry(url=url, headers=self.check_headers, retries=retries)
-
-        return json.loads(response.content)
-
-    def download_export_chunk(self,export_uuid: str, chunk_id: int, retries: int = 3) -> list | None:
-        """
-        Queries the Tenable Nessus endpoint to retrieve a chunk of the asset export. 
-        Returns a list of dicts representing the assets.
-        """
-        url = f"{self.base_url}/{export_uuid}/chunks/{chunk_id}"
-
-        response = get_with_retry(url=url, headers=self.download_headers, retries=retries)
-
-        if "json" in self.download_headers["accept"]:
-            return json.loads(response.content)
-        elif "octet" in self.download_headers["accept"]:
-            return json.loads(response.text)

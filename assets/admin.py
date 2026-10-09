@@ -8,6 +8,7 @@ from django.utils.translation import gettext_lazy as _
 from assets.models import Asset, AssetTagCategory, AssetTag, Vulnerability
 from itassets.admin_filters import DropdownFilterAllValues, DropdownFilterChoices, DropdownFilterRelated, DROPDOWN_TEMPLATE
 
+
 class AssetTagInline(admin.TabularInline):
     model = AssetTag
     extra = 0
@@ -21,9 +22,9 @@ class AssetTagInline(admin.TabularInline):
         """
         num_assets = obj.number_of_tagged_assets()
         # Links to the 'assets' admin page, filtered for assets containing that exact tag value
-        url = reverse("service_desk_admin:assets_asset_changelist", query={f"{obj.category.name.lower()}_tag":obj.pk})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={f"{obj.category.name.lower()}_tag": obj.pk})
         return mark_safe(f"<a href='{url}'>{num_assets}</a>")
-        
+
 
 @admin.register(AssetTagCategory)
 class AssetTagCategoryAdmin(admin.ModelAdmin):
@@ -31,60 +32,59 @@ class AssetTagCategoryAdmin(admin.ModelAdmin):
     Provides an admin interface for users to review tags and minor tag statistics.
     Uses an inline asset tag field to allow for a heirarchical structure.
     """
-    search_fields = ("name",) 
-    readonly_fields = ("total_tags","total_tagged_assets")
-    list_display = ("category","total_tags","total_tagged_assets")
-    inlines = [AssetTagInline,]
+
+    search_fields = ("name",)
+    readonly_fields = ("total_tags", "total_tagged_assets")
+    list_display = ("category", "total_tags", "total_tagged_assets")
+    inlines = [
+        AssetTagInline,
+    ]
 
     readonly_fields = ("total_tags",)
     fields = ("name", "total_tags")
 
     @admin.display(description="Category")
-    def category(self,obj):
+    def category(self, obj):
         return obj.name
 
     @admin.display(description="Total Tags")
-    def total_tags(self,obj):
+    def total_tags(self, obj):
         """
         Provides a count of all tag values for this tag category.
         """
         return obj.number_of_values()
 
-    
     @admin.display(description="Total Tagged Assets")
-    def total_tagged_assets(self,obj):
+    def total_tagged_assets(self, obj):
         """
         Provides a count of all assets tagged with this category, and provides a link to a pre-filtered admin asset page for this tag category.
         """
-        assets = []
         total_assets = sum(set([len(x.tagged_assets.all()) for x in obj.tag_values.all()]))
         # Links to the 'assets' admin page, filtered for any asset that contains tags of that category
-        url = reverse("service_desk_admin:assets_asset_changelist", query={f"tags__category__id__exact":obj.pk})
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"tags__category__id__exact": obj.pk})
         return mark_safe(f"<a href='{url}'>{total_assets}</a>")
+
 
 @admin.register(AssetTag)
 class AssetTagAdmin(admin.ModelAdmin):
     """
     Registers the tag model with django admin so it can be used in autocomplete fields, but hides it from users.
     """
-    def get_model_perms(self, request): 
+
+    def get_model_perms(self, request):
         return {}
+
     search_fields = ("name", "category__name")
-    
+
+
 @admin.register(Vulnerability)
 class VulnerabilityAdmin(admin.ModelAdmin):
     search_fields = (
         "asset__name",
         "finding_id",
-        )
-
-    list_display = (
-        "plugin_name",
-        "plugin_family",
-        "asset__name",
-        "state",
-        "severity"
     )
+
+    list_display = ("plugin_name", "plugin_family", "asset__name", "state", "severity")
 
     list_filter = (
         ("asset", DropdownFilterRelated),
@@ -92,11 +92,8 @@ class VulnerabilityAdmin(admin.ModelAdmin):
         ("severity", DropdownFilterChoices),
     )
 
-    ordering = (
-        "asset__name",
-        "state",
-        "severity"
-    )
+    ordering = ("asset__name", "state", "severity")
+
 
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
@@ -127,19 +124,21 @@ class AssetAdmin(admin.ModelAdmin):
         Dynamically creates filter classes from tags found in the db.
         Allows new tag categories to be created without the need to manually maintain the filters.
         """
-        self.list_filter = self.list_filter_base + tuple([
-            type(
-                f"{cat.name}Filter",
-                (self.TagFilterTemplate, ), 
-                {"title":f"Tag: {cat.name}","parameter_name":f"{cat.name.lower()}_tag","category":cat.name}
-            ) 
-            for cat in AssetTagCategory.objects.all().order_by("name")
-        ])
+        self.list_filter = self.list_filter_base + tuple(
+            [
+                type(
+                    f"{cat.name}Filter",
+                    (self.TagFilterTemplate,),
+                    {"title": f"Tag: {cat.name}", "parameter_name": f"{cat.name.lower()}_tag", "category": cat.name},
+                )
+                for cat in AssetTagCategory.objects.all().order_by("name")
+            ]
+        )
 
         return super().get_list_filter(request)
 
     # Base filters - Dynamic tag filters are appended to this
-    list_filter_base = (("os",DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
+    list_filter_base = (("os", DropdownFilterAllValues), ("tags__category", DropdownFilterRelated))
 
     ordering = ["name"]
     list_display = (
@@ -152,18 +151,10 @@ class AssetAdmin(admin.ModelAdmin):
         "associated_systems",
         "display_tags",
         "total_vulns",
-        "total_critical_vulns"
+        "total_critical_vulns",
     )
-    
-    search_fields = (
-        "name",
-        "description",
-        "contacts__email",
-        "systems__name",
-        "tags__name",
-        "os",
-        "os_version"
-    )
+
+    search_fields = ("name", "description", "contacts__email", "systems__name", "tags__name", "os", "os_version")
 
     autocomplete_fields = (
         "contacts",
@@ -188,17 +179,13 @@ class AssetAdmin(admin.ModelAdmin):
         (
             "Overview",
             {
-                "fields":(
-                    "name",
-                    "asset_type",
-                    "description"
-                ),
+                "fields": ("name", "asset_type", "description"),
             },
         ),
         (
             "Associations",
             {
-                "fields":(
+                "fields": (
                     "custodian",
                     "contacts",
                     "systems",
@@ -209,7 +196,7 @@ class AssetAdmin(admin.ModelAdmin):
         (
             "Technical Info",
             {
-                "fields":(
+                "fields": (
                     "os",
                     "os_version",
                     "defender_data_pprint",
@@ -220,11 +207,7 @@ class AssetAdmin(admin.ModelAdmin):
         (
             "Meta-Data",
             {
-                "fields":(
-                    "first_seen",
-                    "last_seen",
-                    "last_modified"
-                ),
+                "fields": ("first_seen", "last_seen", "last_modified"),
             },
         ),
     )
@@ -234,7 +217,7 @@ class AssetAdmin(admin.ModelAdmin):
         if data:
             result = json.dumps(data, indent=4, sort_keys=True)
             result = f"<pre>{result}</pre>"
-            result =  mark_safe(result)
+            result = mark_safe(result)
         return result
 
     def defender_data_pprint(self, obj=None):
@@ -244,6 +227,6 @@ class AssetAdmin(admin.ModelAdmin):
     def tenable_data_pprint(self, obj=None):
         if obj and obj.tenable_data:
             return self.pprint_json(data=obj.tenable_data)
-        
+
     defender_data_pprint.short_description = "Defender Data"
     tenable_data_pprint.short_description = "Tenable Data"

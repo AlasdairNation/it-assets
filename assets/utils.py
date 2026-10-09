@@ -11,6 +11,7 @@ from django.utils.timezone import now
 
 from assets.models import Asset
 
+
 def advanced_hunting_client_token() -> Dict | None:
     """Uses the Microsoft msal library to obtain an access token for the Graph API.
     Retrieves a token that allows for Defender advanced hunting queries.
@@ -28,6 +29,7 @@ def advanced_hunting_client_token() -> Dict | None:
 
     return token
 
+
 def ms_graph_query_advanced_hunting(query: str, token: Optional[Dict] = None) -> List | None:
     """
     Queries the advanced hunting endpoint for a given query and returns the results as an array of dicts.
@@ -41,11 +43,12 @@ def ms_graph_query_advanced_hunting(query: str, token: Optional[Dict] = None) ->
         "Content-Type": "application/json",
     }
     url = "https://graph.microsoft.com/v1.0/security/runHuntingQuery"
-    #resp = requests.post(url, headers=headers, json=json.dumps(query))
-    resp = requests.post(url,headers=headers, json={"query": query})
+    # resp = requests.post(url, headers=headers, json=json.dumps(query))
+    resp = requests.post(url, headers=headers, json={"query": query})
     resp.raise_for_status()
 
-    return json.loads(resp.content)['results']
+    return json.loads(resp.content)["results"]
+
 
 def ms_graph_get_servers(token: Optional[Dict] = None):
     # Query is manual for prototype, but might be better to have it ported in through a config file
@@ -74,6 +77,7 @@ def ms_graph_get_servers(token: Optional[Dict] = None):
     """
     return ms_graph_query_advanced_hunting(query=query, token=token)
 
+
 def alias_get_or_create(aliases: list):
     """
     Get or Create an asset based on the list of aliases for that asset.
@@ -83,15 +87,16 @@ def alias_get_or_create(aliases: list):
     for name in aliases:
         if Asset.objects.filter(aliases__contains=name).exists():
             return Asset.objects.filter(aliases__contains=name).first(), False
-    return Asset.objects.create(name=aliases[0],aliases=aliases,last_seen=now()), True
+    return Asset.objects.create(name=aliases[0], aliases=aliases, last_seen=now()), True
+
 
 def get_with_retry(url: str, headers: dict, retries: int = 3):
     """
     Makes a GET web request, retrying 429 errors after sleeping and raising other errors.
     Retries 429 errors 1 time by default.
     """
-    request = lambda: requests.get(url, headers=headers)
-    return __wr_with_retry(request,retries)
+    return __wr_with_retry(lambda: requests.get(url, headers=headers), retries)
+
 
 def post_with_retry(url: str, headers: dict, payload: dict, retries: int = 3):
     """
@@ -99,8 +104,8 @@ def post_with_retry(url: str, headers: dict, payload: dict, retries: int = 3):
     Retries 429 errors 1 time by default.
     """
     json_payload = json.dumps(payload)
-    request = lambda: requests.post(url, json=json_payload, headers=headers)
-    return __wr_with_retry(request, retries)
+    return __wr_with_retry(lambda: requests.post(url, json=json_payload, headers=headers), retries)
+
 
 def __wr_with_retry(request, retries: int):
     """
@@ -113,7 +118,7 @@ def __wr_with_retry(request, retries: int):
         attempts = 0
         while response.status_code == 429 and retries > attempts:
             attempts += 1
-            time.sleep(int(response.headers.get('retry-after')))
+            time.sleep(int(response.headers.get("retry-after")))
             response = request()
 
     response.raise_for_status()
