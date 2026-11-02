@@ -266,7 +266,7 @@ def ms_graph_get_group(azure_guid: str, token: Optional[dict] = None) -> Dict | 
     return resp.json()
 
 
-def ms_graph_list_member_groups_with_names(azure_guid: str, token: Optional[Dict] = None) -> Dict | None:
+def ms_graph_list_member_groups_with_names(azure_guid: str, token: Optional[Dict] = None) -> dict[str,str] | None:
     """Query the Microsoft Graph API to find a list of groups a user belongs to, and return the results as a dict of displayNames"""
     if not token:
         token = ms_graph_client_token()
@@ -308,24 +308,61 @@ def ms_graph_remove_user_licenses(azure_guid: str, token: Optional[Dict] = None)
 
     removed_groups = []
     if groups:
-        # Remove user from all license groups
-        for guid, name in groups.items():
-            if name.startswith(settings.LICENSE_GROUP_PREFIX):
-                # Remove user from group
-                ms_graph_remove_user_from_group(azure_guid, guid, token=token)
-                # Record removal
-                removed_groups.append(name)
+        license_groups = {k:v for k,v in groups.items() if k.startswith(settings.LICENSE_GROUP_PREFIX)}
+        # Remove user from group
+        ms_graph_remove_user_from_group(azure_guid, license_groups.values(), token=token)
+        # Record removal
+        removed_groups = list(license_groups.keys())
 
     return removed_groups
 
-def ms_graph_remove_user_from_group(user_azure_guid: str, group_azure_guid: str, token: Optional[Dict] = None):
-    """Use the Microsoft Graph API to remove a user from an entra group"""
-    pass
+def ms_graph_remove_user_from_group(user_azure_guid: str, groups_guids: Iterable[str], token: Optional[Dict] = None) -> dict | None:
+    """Use the Microsoft Graph API to remove a user from 1 or more entra groups"""
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occasionally fails and returns None.
+        return None
+    
+    url = f"https://graph.microsoft.com/v1.0/{user_azure_guid}/assignLicense"
+    headers = {
+        "Authorization": f"Bearer {token['access_token']}",
+        "Content-type": "application/json",
+    }
+    payload = {
+        "addLicenses": [],
+        "removeLicenses": groups_guids
+    }
 
-def ms_graph_add_user_to_group(user_azure_guid: str, group_azure_guid: str, token: Optional[Dict] = None):
-    """Use the Microsoft Graph API to add a user to an entra group"""
-    pass
+    resp = requests.post(url, headers=headers, json = payload)
+    resp.raise_for_status()
+    return resp.json()
 
+def ms_graph_add_user_from_group(user_azure_guid: str, groups_guids: Iterable[str], token: Optional[Dict] = None) -> dict | None:
+    """Use the Microsoft Graph API to add a user to 1 or more entra groups"""
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occasionally fails and returns None.
+        return None
+    
+    url = f"https://graph.microsoft.com/v1.0/{user_azure_guid}/assignLicense"
+    headers = {
+        "Authorization": f"Bearer {token['access_token']}",
+        "Content-type": "application/json",
+    }
+    payload = {
+        "addLicenses": [
+            {
+                "disabledPlans" : [],
+                "skuId": guid
+            } 
+            for guid in groups_guids
+            ],
+        "removeLicenses": []
+    }
+
+    resp = requests.post(url, headers=headers, json = payload)
+    resp.raise_for_status()
+    return resp.json()
 
 def ms_graph_validate_password(password: str, token: Optional[dict] = None) -> bool | None:
     """Query the Microsoft Graph API (beta) if a given password string validates complexity requirements."""
