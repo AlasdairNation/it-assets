@@ -322,12 +322,16 @@ class DepartmentUserTerminationsTestCase(TestCase):
         # 3+ valid check, null & empty check, mixed valid & invalid check
         self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
         self.assertEqual(self.user.past_term_date(), False)
+        self.assertFalse(self.user.terminated_and_beyond_grace_period(0))
         self.assertEqual(self.user_with_empties.get_term_date(), None)
         self.assertEqual(self.user_with_empties.past_term_date(), False)
+        self.assertFalse(self.user_with_empties.terminated_and_beyond_grace_period(0))
+
         # Empty values check
         self.user.term_date_data = []
         self.assertEqual(self.user.get_term_date(), None)
         self.assertEqual(self.user.past_term_date(), False)
+        self.assertFalse(self.user.terminated_and_beyond_grace_period(0))
 
         # blank and None values check
         self.user.term_date_data = [
@@ -354,6 +358,7 @@ class DepartmentUserTerminationsTestCase(TestCase):
         ]
         self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
         self.assertEqual(self.user.past_term_date(), False)
+        self.assertFalse(self.user.terminated_and_beyond_grace_period(0))
 
         # Identical date check
         self.user.term_date_data = [
@@ -372,6 +377,7 @@ class DepartmentUserTerminationsTestCase(TestCase):
         ]
         self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=4))
         self.assertEqual(self.user.past_term_date(), False)
+        self.assertFalse(self.user.terminated_and_beyond_grace_period(0))
 
         # 1 valid + past_term_date check
         self.user.term_date_data = [
@@ -384,6 +390,10 @@ class DepartmentUserTerminationsTestCase(TestCase):
         ]
         self.assertEqual(self.user.get_term_date(), date.today() + timedelta(weeks=-2))
         self.assertEqual(self.user.past_term_date(), True)
+        self.assertTrue(self.user.terminated_and_beyond_grace_period(0))
+        self.assertTrue(self.user.terminated_and_beyond_grace_period(7))
+        self.assertTrue(self.user.terminated_and_beyond_grace_period(14))
+        self.assertFalse(self.user.terminated_and_beyond_grace_period(15))
 
         # 1 valid + past_term_date check
         self.user.term_date_data = [
@@ -391,6 +401,8 @@ class DepartmentUserTerminationsTestCase(TestCase):
         ]
         self.assertEqual(self.user.get_term_date(), date.today())
         self.assertEqual(self.user.past_term_date(), True)
+        self.assertTrue(self.user.terminated_and_beyond_grace_period(0))
+        self.assertFalse(self.user.terminated_and_beyond_grace_period(1))
 
 
 # ---------------------------------------------------------------------------
