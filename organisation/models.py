@@ -204,6 +204,9 @@ class DepartmentUser(models.Model):
     )
     assigned_entra_groups = JSONField(default=dict, null=True, blank=True, editable=False)
 
+    # Used exclusively for confirming licenses have been stripped post-termination
+    termination_processed = models.BooleanField(default=False, help_text = "Account no longer requires termination processing")
+
     def __str__(self):
         return self.email
 
@@ -484,6 +487,13 @@ class DepartmentUser(models.Model):
         """From Ascender data, return True if the user is past their termination date."""
         term_date = self.get_term_date()
         return term_date is not None and term_date <= date.today()
+
+    def terminated_and_beyond_grace_period(self, grace_period: int) -> bool:
+        """
+        Returns true if the user is terminated and after the inputted grace period, else false
+        """
+        term_date = self.get_term_date()
+        return term_date is not None and term_date + timedelta(days=grace_period) <= datetime.now(settings.TZ).date()
 
 
     def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = {}):

@@ -292,6 +292,40 @@ def ms_graph_list_member_groups_with_names(azure_guid: str, token: Optional[Dict
 
     return {g["displayName"]: g["id"] for g in groups}
 
+def ms_graph_remove_user_licenses(azure_guid: str, token: Optional[Dict] = None) -> list[str] | None:
+    """
+    Use the Microsoft Graph API to remove all licenses from a user via removing them from all license groups.
+    Returns a tuple of 2 lists of group names representing removed groups and remaining groups respactively
+    """
+
+    if not token:
+        token = ms_graph_client_token()
+    if not token:  # The call to the MS API occasionally fails and returns None.
+        return None
+
+    # Retrieve all groups
+    groups = ms_graph_list_member_groups_with_names(azure_guid=azure_guid, token=token)
+
+    removed_groups = []
+    if groups:
+        # Remove user from all license groups
+        for guid, name in groups.items():
+            if name.startswith(settings.LICENSE_GROUP_PREFIX):
+                # Remove user from group
+                ms_graph_remove_user_from_group(azure_guid, guid, token=token)
+                # Record removal
+                removed_groups.append(name)
+
+    return removed_groups
+
+def ms_graph_remove_user_from_group(user_azure_guid: str, group_azure_guid: str, token: Optional[Dict] = None):
+    """Use the Microsoft Graph API to remove a user from an entra group"""
+    pass
+
+def ms_graph_add_user_to_group(user_azure_guid: str, group_azure_guid: str, token: Optional[Dict] = None):
+    """Use the Microsoft Graph API to add a user to an entra group"""
+    pass
+
 
 def ms_graph_validate_password(password: str, token: Optional[dict] = None) -> bool | None:
     """Query the Microsoft Graph API (beta) if a given password string validates complexity requirements."""
