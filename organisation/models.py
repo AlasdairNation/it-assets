@@ -33,10 +33,7 @@ class DepartmentUser(models.Model):
         (14, "Unknown"),
     )
     # The following is a list of account types to normally exclude from user queries.
-    # E.g. Role-based accounts, volunteers, etc.
     ACCOUNT_TYPE_EXCLUDE = [
-        7,  # Volunteer
-        1,  # Alumni
         9,  # Role-based
         14,  # Unknown, disabled
     ]
@@ -476,7 +473,7 @@ class DepartmentUser(models.Model):
             active_jobs = [x for x in self.term_date_data if (x["term_date"] is None or x["term_date"] == "")]
             if len(active_jobs) > 0:
                 return None
-            
+
             # Get all valid term dates
             valid_term_dates = [x["term_date"] for x in self.term_date_data if (x["term_date"] is not None and x["term_date"] != "")]
             if len(valid_term_dates) > 0:
