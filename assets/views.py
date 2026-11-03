@@ -21,7 +21,11 @@ class AssetAPIResource(View):
         if not request.user.has_perm("assets.view_asset"):
             return HttpResponseForbidden("You do not have permission to view this resource")
         else:
-            queryset = Asset.objects.all()
+            queryset = Asset.objects \
+                .prefetch_related("systems") \
+                .prefetch_related("contacts") \
+                .prefetch_related("tags") \
+                .all()
 
             # Queryset filtering.
             # By ID
@@ -97,7 +101,10 @@ class VulnerabilityAPIResource(View):
         if not request.user.has_perm("assets.view_vulnerability"):
             return HttpResponseForbidden("You do not have permission to view this resource")
         else:
-            queryset = Vulnerability.objects.all()
+            queryset = Vulnerability.objects \
+                .select_related("asset") \
+                .prefetch_related("asset__tags") \
+                .all()
             # Queryset filtering.
             # By finding_id
             if "finding_id" in kwargs and kwargs["finding_id"]:
