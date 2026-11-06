@@ -104,8 +104,8 @@ class VulnerabilityAPIResource(View):
             queryset = Vulnerability.objects \
                 .select_related("asset") \
                 .prefetch_related("asset__tags") \
-                .all()
-            # Queryset filtering.
+                .prefetch_related("asset__systems") \
+                .all()            # Queryset filtering.
             # By finding_id
             if "finding_id" in kwargs and kwargs["finding_id"]:
                 queryset = queryset.filter(finding_id=kwargs["finding_id"])
