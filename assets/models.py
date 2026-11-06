@@ -3,12 +3,14 @@ from __future__ import annotations
 import re
 from datetime import date, datetime
 
+from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import JSONField
 from django.template.defaultfilters import linebreaksbr
 from django.utils.html import format_html
 from django.utils.timezone import localtime as now
+from github import Github
 
 from assets.enum_library import Severity, SeverityMT, State
 from itsystems.models import ITSystemRecord
@@ -109,7 +111,11 @@ class Asset(models.Model):
     )
     os_list = models.JSONField(default=list, null=True, blank=True)
     ipv4_list = models.JSONField(default=list, null=True, blank=True)
-    first_seen = models.DateTimeField(auto_now_add=True, verbose_name="First Seen")
+    first_seen = models.DateTimeField(
+        verbose_name="First Seen",
+        null=True,
+        blank=True,
+    )
     last_seen = models.DateTimeField(
         verbose_name="Last Seen",
         null=True,
@@ -137,7 +143,7 @@ class Asset(models.Model):
     @property
     def associated_systems(self) -> str:
         """Provides a string representation of all associated IT Systems"""
-        return ", ".join([str(s) for s in self.systems.all()])
+        return ", ".join([str(s) for s in self.systems.all().order_by("system_id")])
 
     @property
     def operating_system(self) -> str:
@@ -203,7 +209,9 @@ class Asset(models.Model):
             # Raw data set
             self.tenable_data = t
             # Meta-data update
-            self.last_seen = now()
+            if t.get("timestamps"):
+                self.first_seen = convert_iso(t["timestamps"].get("first_seen"))
+                self.last_seen = convert_iso(t["timestamps"].get("last_seen"))
             # Set ID
             self.tenable_id = t.get("id")
             # Retrieve Aliases & IPv4s
@@ -241,7 +249,7 @@ class Asset(models.Model):
             for tag in self.tenable_data.get("tags", []):
                 self.add_tag(tag=tag["value"], category=tag["key"])
             # For web apps, add a web app tag if it's not present
-            if "webapp" in tenable_data.get("types",[]) and not self.has_tag(tag="Web App", category="Devices"):
+            if "webapp" in tenable_data.get("types", []) and not self.has_tag(tag="Web App", category="Devices"):
                 self.add_tag(tag="Web App", category="Devices")
 
         # Updates vulnerability data if any
@@ -470,24 +478,18 @@ class Vulnerability(models.Model):
             self.severity_modification_type = (
                 data["severity_modification_type"][0].upper() if data.get("severity_modification_type") else None
             )
-            self.first_found = self.__convert_iso(data.get("first_found"))
-            self.last_fixed = self.__convert_iso(data.get("last_fixed"))
-            self.last_found = self.__convert_iso(data.get("last_found"))
+            self.first_found = convert_iso(data.get("first_found"))
+            self.last_fixed = convert_iso(data.get("last_fixed"))
+            self.last_found = convert_iso(data.get("last_found"))
             self.indexed = data.get("indexed")
             self.state = data["state"][0].upper() if data.get("state") else None
             self.source = data.get("source")
             self.finding_id = data.get("finding_id")
-            self.resurfaced_date = self.__convert_iso(data.get("resurfaced_date"))
+            self.resurfaced_date = convert_iso(data.get("resurfaced_date"))
             self.time_taken_to_fix = data.get("time_taken_to_fix")
             self.software_vulns = data.get("software_vulns", [])
 
         self.save()
-
-    def __convert_iso(self, iso_date: str | None) -> datetime | None:
-        """
-        Returns the datetime conversion of the given iso formattd string iso_date, otherwise if iso_date is None it returns None.
-        """
-        return datetime.fromisoformat(iso_date) if iso_date else None
 
     @property
     def asset_name(self) -> str:
@@ -500,7 +502,7 @@ class Vulnerability(models.Model):
     @property
     def cvss3_base_score(self) -> float | None:
         return self.plugin.get("cvss3_base_score")
-    
+
     @property
     def exploitability_ease(self) -> str | None:
         return self.plugin.get("exploitability_ease")
@@ -527,7 +529,7 @@ class Vulnerability(models.Model):
 
     @property
     def patch_publication_date(self) -> date | None:
-        return self.__convert_iso(self.plugin["patch_publication_date"]).date() if self.plugin.get("patch_publication_date") else None
+        return convert_iso(self.plugin["patch_publication_date"]).date() if self.plugin.get("patch_publication_date") else None
 
     @property
     def plugin_description(self) -> str | None:
@@ -581,6 +583,7 @@ class Vulnerability(models.Model):
         """
         return f"""
 Asset: {self.asset_name}
+Systems: {self.asset.associated_systems}
 
 Severity: {self.get_severity_display()}
 State: {self.get_state_display()}
@@ -607,7 +610,9 @@ Solution:
         breaks via linebreaksbr.
         """
         return format_html(
-            """<h3>{}</h3><br><hr><br>
+            """<h3>{}</h3><br>
+<b>Systems:</b> {}<br>
+<br><hr><br>
 <b>Severity:</b> {}<br>
 <b>State:</b> {}<br>
 <b>Severity Modification Type:</b> {}<br>
@@ -618,6 +623,7 @@ Solution:
 <b>Plugin Output:</b><br>{}<br><br>
 <b>Solution:</b><br>{}<br>""",
             self.asset_name,
+            self.asset.associated_systems,
             self.get_severity_display(),
             self.get_state_display(),
             self.get_severity_modification_type_display(),
@@ -656,7 +662,7 @@ class Repository(models.Model):
     def __str__(self) -> str:
         return f"{self.it_system}: {self.url}"
 
-    def sync_dependabot_alerts(self, github_client=None) -> list[RepositoryAdvisory]:
+    def sync_dependabot_alerts(self, github_client: Github | None = None) -> list[RepositoryAdvisory]:
         """Synchronise open GitHub Dependabot alerts for this repository."""
         from assets.utils import sync_github_repo_dependabot_alerts
 
@@ -713,3 +719,12 @@ class RepositoryAdvisory(models.Model):
             "fixed_at": self.data["fixed_at"],
             "html_url": self.data["html_url"],
         }
+
+
+# Helper function for assets and vulns
+# Would be in utils if this wouldn't cause a circular dependancy issue.
+def convert_iso(iso_date: str | None) -> datetime | None:
+    """
+    Returns the datetime conversion of the given iso formattd string iso_date, otherwise if iso_date is None it returns None.
+    """
+    return datetime.fromisoformat(iso_date).astimezone(settings.TZ) if iso_date else None

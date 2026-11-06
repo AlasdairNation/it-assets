@@ -16,6 +16,7 @@ resources:
   - cronjobs/deptusers-signins
   - cronjobs/deptusers-sync-ad
   - cronjobs/m365-licence-check
+  - cronjobs/sync-dependabot-alerts
   - cronjobs/update-ccm
   - cronjobs/itsystemsregister-contacts
   - cronjobs/assets-sync-to-tenable
@@ -39,4 +40,4 @@ patches:
   - path: postgres_fdw_patch.yaml
 images:
   - name: ghcr.io/dbca-wa/it-assets
-    newTag: 2.5.23
+    newTag: 2.5.26
