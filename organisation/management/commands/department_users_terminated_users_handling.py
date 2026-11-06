@@ -107,6 +107,19 @@ class Command(BaseCommand):
         self.logger.info(f"{len(actionable_terminated_users)} actionable terminations found.")
         return actionable_terminated_users
 
+    def disable_users(self,users: list[DepartmentUser], token: dict, send_failure_email: bool=False):
+        pass
+
+    def delete_users(self, users: list[DepartmentUser], token: dict, send_failure_email: bool=False):
+        pass
+
+    def notify_disabled(self, user: DepartmentUser, send_failure_email: bool=False):
+        pass
+
+    def notify_deleted(self, user: DepartmentUser, send_failure_email: bool=False):
+        pass
+
+    def notify
 
     def remove_user_licenses(self,users: list[DepartmentUser], token: dict, send_failure_email: bool=False) -> tuple[int,int,dict[str,list[str]]]:
         """

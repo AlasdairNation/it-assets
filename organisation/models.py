@@ -203,6 +203,9 @@ class DepartmentUser(models.Model):
 
     # Used exclusively for confirming licenses have been stripped post-termination
     termination_processed = models.BooleanField(default=False, help_text = "Account no longer requires termination processing")
+    marked_for_deletion
+    exempt_from_automatic_disabling = models.BooleanField(default=False, help_text = "Account is excluded from being automatically disabled ")
+    exempt_from_automatic_deletion = models.BooleanField(default=False, help_text = "Account is except from being automatically deleted 30 days after termination processing.")
 
     def __str__(self):
         return self.email
