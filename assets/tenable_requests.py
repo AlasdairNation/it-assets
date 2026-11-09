@@ -21,6 +21,56 @@ def get_tenable_key_string() -> str:
         raise Exception("TENABLE_ACCESS_KEY and TENABLE_SECRET_KEY must both be set.")
     return f"accessKey={access_key};secretKey={secret_key}"
 
+def get_tenable_cloud_security_secret() -> str:
+    """
+    Returns the secret required for cloud security api operations in tenable.
+    """
+    api_key = settings.TENABLE_CLOUD_SECURITY_SECRET
+    if not api_key:
+        raise Exception("TENABLE_CLOUD_SECURITY_SECRET must be set")
+    return api_key
+
+def get_tenable_images() -> list:
+    url = "https://app.tenable.com/api/graph"
+    headers = {
+        "Authorization": f"Bearer {get_tenable_cloud_security_secret()}",
+        "Content-Type": "application/json"
+    }
+    # Generic inventory query - will be replaced later
+    payload = {"query":"""
+{
+  Entities(
+    nodes {
+      AccountId
+      AccountName
+      CustomProperties {
+        Name
+        Values { Value }
+      }
+      CreatorOriginator { Id }
+      CreatorIdentity  { Id }
+      CreationTime
+      Id
+      Labels
+      Name
+      Provider
+      Region
+      SyncTime
+      Tags { Key Value }
+      Type: __typename
+      ... on AwsResource {
+        Arn
+      }
+    }
+  }
+}
+"""
+    }
+
+    response = post_with_retry(url=url, headers=headers, payload=payload)
+
+    return json.loads(response.content)
+
 
 class TenableExporter:
     """
