@@ -337,7 +337,7 @@ def ms_graph_remove_user_from_group(user_azure_guid: str, groups_guids: Iterable
     resp.raise_for_status()
     return resp.json()
 
-def ms_graph_add_user_from_group(user_azure_guid: str, groups_guids: Iterable[str], token: Optional[Dict] = None) -> dict | None:
+def ms_graph_add_user_to_group(user_azure_guid: str, groups_guids: Iterable[str], token: Optional[Dict] = None) -> dict | None:
     """Use the Microsoft Graph API to add a user to 1 or more entra groups"""
     if not token:
         token = ms_graph_client_token()

@@ -17,13 +17,6 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "-r",
-            "--remove-licenses",
-            action="store_true",
-            dest="remove_licenses",
-            help="(Optional) Flag to remove licenses from terminated users who are past the grace period (default behaviour is logging only",
-        )
-        parser.add_argument(
             "--days-terminated",
             action="store",
             type=int,
@@ -45,32 +38,51 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.logger.info("Started termination processing command")
+
         # Gets the termination grace period in days
         terminated_account_days = options.get("terminated_account_days", settings.TERMINATED_ACCOUNT_DAYS)
 
-        # Checks if any users are no longer terminated and resets their processed status.
-        reset_user_count = self.reevaluate_processed_users(terminated_account_days)
+        # Checks if any users are no longer terminated and resets their termination staging status and deletion date
+        reset_user_count = self.reset_ongoing_staged_users(terminated_account_days)
 
-        # Retrieves actionable terminated users
-        actionable_terminated_users = self.get_actionable_terminations(terminated_account_days)
+        # Stages all unstaged terminated users (azure disabled and deletion date set)
+        staged_user_count = self.stage_terminated_users(terminated_account_days)
 
-        # Get graph token
-        token = ms_graph_client_token()
+        # Offboards all expired staged user accounts that have an expired grace period
+        offboarded_users_count = self.offboard_expired_staged_users(terminated_account_days)
 
-        # Remove licenses from users
-        if options.get("remove_licenses", False):
-            success_count, failure_count, termination_summary = self.remove_user_licenses(actionable_terminated_users, token, send_failure_email=options.get("send_failure_email", False))
+    def reset_ongoing_staged_users(terminated_account_days: int):
+        # Retrieve staged users that are no longer terminated
+        rehired_users = DepartmentUser.objects.filter(azure_account_deletion_staged=True, ongoing=True)
 
-            # Summarize the management command actions
-            self.summarize_results(
-                success_count = success_count,
-                failure_count = failure_count,
-                reset_count = reset_user_count,
-                actionable_terms_count = len(actionable_terminated_users),
-                summary = termination_summary,
-                send_summary_email = options.get("send_summary_email", False),
-            )
-        self.logger.info("Termination processing command complete...")
+        for user in rehired_users:
+            # Enable the account if it was disabled
+            
+            # Reset the staging status
+            user.azure_account_deletion_staged = False
+            # Remove the deletion date
+            user.azure_account_deletion_date = None
+
+        # # Retrieves actionable terminated users
+        # actionable_terminated_users = self.get_actionable_terminations(terminated_account_days)
+
+        # # Get graph token
+        # token = ms_graph_client_token()
+
+        # # Remove licenses from users
+        # if options.get("remove_licenses", False):
+        #     success_count, failure_count, termination_summary = self.remove_user_licenses(actionable_terminated_users, token, send_failure_email=options.get("send_failure_email", False))
+
+        #     # Summarize the management command actions
+        #     self.summarize_results(
+        #         success_count = success_count,
+        #         failure_count = failure_count,
+        #         reset_count = reset_user_count,
+        #         actionable_terms_count = len(actionable_terminated_users),
+        #         summary = termination_summary,
+        #         send_summary_email = options.get("send_summary_email", False),
+        #     )
+        # self.logger.info("Termination processing command complete...")
 
 
     def reevaluate_processed_users(self, terminated_account_days: int) -> int:
@@ -96,16 +108,30 @@ class Command(BaseCommand):
 
     def get_actionable_terminations(self,terminated_account_days: int) -> list[DepartmentUser]:
         """
-        Retrieves users that are terminated, passed their grace period, and haven't already been processed.
+        Retrieves users that are staged, have an expired grace period, and are not exempt from deletion.
         """
-        self.logger.info(f"Finding unprocessed users terminated over {terminated_account_days} days ago...")
+        self.logger.info(f"Finding staged non-exempt users terminated over {terminated_account_days} days ago...")
         actionable_terminated_users = [user for user in DepartmentUser.objects
                                        .exclude(term_date_data__iexact="[]")
-                                       .exclude(termination_processed=True) 
+                                       .exclude(azure_account_deletion_staged=True) 
+                                       .exclude(azure_exempt_from_deletion=True)
                 if user.terminated_and_beyond_grace_period(terminated_account_days)
                 ]
         self.logger.info(f"{len(actionable_terminated_users)} actionable terminations found.")
         return actionable_terminated_users
+
+    def get_stageable_terminations(self,terminated_account_days: int) -> list[DepartmentUser]:
+        """
+        Retrieves terminated users who have yet to be staged.
+        """
+        self.logger.info(f"Finding staged non-exempt users terminated over {terminated_account_days} days ago...")
+        actionable_terminated_users = [user for user in DepartmentUser.objects
+                                       .filter(ongoing=False)
+                                       .filter(azure_account_deletion_staged=True) 
+                                       .exclude(azure_exempt_from_deletion=True)
+                                       .filter(termination_date__lt=)
+                if user.terminated_and_beyond_grace_period(terminated_account_days)
+                ]        self.logger.info(f"{len(actionable_terminated_users)} actionable terminations found.")
 
     def disable_users(self,users: list[DepartmentUser], token: dict, send_failure_email: bool=False):
         pass
@@ -119,7 +145,8 @@ class Command(BaseCommand):
     def notify_deleted(self, user: DepartmentUser, send_failure_email: bool=False):
         pass
 
-    def notify
+    def notify():
+        pass
 
     def remove_user_licenses(self,users: list[DepartmentUser], token: dict, send_failure_email: bool=False) -> tuple[int,int,dict[str,list[str]]]:
         """

@@ -210,11 +210,10 @@ class DepartmentUser(models.Model):
     )
     assigned_entra_groups = JSONField(default=dict, null=True, blank=True, editable=False)
 
-    # Used exclusively for confirming licenses have been stripped post-termination
-    termination_processed = models.BooleanField(default=False, help_text = "Account no longer requires termination processing")
-    marked_for_deletion
-    exempt_from_automatic_disabling = models.BooleanField(default=False, help_text = "Account is excluded from being automatically disabled ")
-    exempt_from_automatic_deletion = models.BooleanField(default=False, help_text = "Account is except from being automatically deleted 30 days after termination processing.")
+    # Used exclusively for azure account deletion
+    azure_account_deletion_staged = models.BooleanField(default=False, editable=False, help_text="Entra ID account was disabled and an automatic deletion date was set.")
+    azure_account_deletion_date = models.DateField(null=True, editable=False, help_text="Entra ID account and Department User record will be deleted on this date.")
+    azure_exempt_from_deletion = models.BooleanField(default=False, help_text = "Entra ID account and Department User record are exempt from being automatically deleted after the grace period.")
 
     def __str__(self):
         return self.email
@@ -503,7 +502,7 @@ class DepartmentUser(models.Model):
         Returns true if the user is terminated and after the inputted grace period, else false
         """
         term_date = self.get_term_date()
-        return term_date is not None and term_date + timedelta(days=grace_period) <= datetime.now(settings.TZ).date()
+        return term_date is not None and term_date + timedelta(days=grace_period) < datetime.now(settings.TZ).date()
 
 
     def sync_ad_data(self, container: str = "azuread", log_only: bool = False, token: dict = {}):
@@ -1243,6 +1242,49 @@ class DepartmentUser(models.Model):
                     else:
                         LOGGER.info("NO ACTION (log only)")
 
+
+    def disable_entra_account(self, token: dict = {}, container: str = "azuread", logging_context: str = "DIRECT CALL"):
+        """
+        Disables the user's entra account and onprem AD account (if applicable).
+        """    
+        if self.active and self.get_licence():
+            # Onprem AD users.
+            if self.dir_sync_enabled and self.ad_guid and self.ad_data:
+                prop = "Enabled"
+                change = {
+                    "identity": self.ad_guid,
+                    "property": prop,
+                    "value": False,
+                }
+                f = BytesIO()
+                f.write(json.dumps(change, indent=2).encode("utf-8"))
+                f.seek(0)
+
+                blob = f"onprem_changes/{self.ad_guid}_{prop}.json"
+                upload_blob(f, container, blob)
+                LOGGER.info(f"{logging_context.upper()}: {self} onprem AD account disable command uploaded to blob storage ({prop})")
+
+            # Cloud users.
+            elif not self.dir_sync_enabled and self.azure_guid and self.azure_ad_data:
+                # Retrieve graph token
+                if not token:
+                    token = ms_graph_client_token()
+                if token:
+                    headers = {
+                        "Authorization": f"Bearer {token['access_token']}",
+                        "Content-Type": "application/json",
+                    }
+                    data = {"accountEnabled": False}
+                    url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}"
+
+                    requests.patch(url, headers=headers, json=data)
+                    LOGGER.info(f"{logging_context.upper()}: {self} Entra ID account accountEnabled set to False")
+                    # Revoke cloud user sessions.
+                    revoke_url = f"https://graph.microsoft.com/v1.0/users/{self.azure_guid}/revokeSignInSessions"
+                    requests.post(revoke_url, headers=headers)
+                    LOGGER.info(f"{logging_context.upper()}: {self} Entra ID account user sessions revoked")
+
+
     def update_from_ascender_data(self):
         """For this DepartmentUser object, update the field values from cached Ascender data and term_date_data
         (the source of truth for these values).
@@ -1408,6 +1450,7 @@ class DepartmentUser(models.Model):
         self.ongoing = not self.past_term_date()
 
         self.save()
+
 
     def update_from_entra_id_data(self):
         """For this DepartmentUser object, update the field values from cached Azure Entra ID data
