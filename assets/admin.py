@@ -647,6 +647,37 @@ class AssetAdmin(admin.ModelAdmin):
                 case _:
                     return queryset
 
+    class LastSyncedFilter(admin.SimpleListFilter):
+        """
+        A custom filter that allows users to filters by last_synced
+        """
+
+        template = DROPDOWN_TEMPLATE
+        title = "Last synced to Tenable"
+        parameter_name = "last_synced"
+
+        def lookups(self, request, model_admin):
+            filter_list = [
+                ("LTE_1", "<=1 Day ago"),
+                ("GT_1", ">1 Day ago"),
+                ("GT_7", ">7 Days ago"),
+                ("GT_30", ">30 Days ago"),
+            ]
+
+            return filter_list
+
+        def queryset(self, request, queryset):
+            if self.value():
+                if self.value().startswith("GT_"):
+                    days = int(self.value()[3:])
+                    return queryset.filter(last_synced__lt=(now() - timedelta(days=days)))
+                elif self.value() == "LTE_1":
+                    return queryset.filter(last_synced__date__range=(now() - timedelta(days=1), now()))
+                else:
+                    return queryset
+            else:
+                return queryset
+
     def get_list_filter(self, request):
         """
         Dynamically creates filter classes from tags found in the db.
@@ -674,7 +705,7 @@ class AssetAdmin(admin.ModelAdmin):
         return qs
 
     # Base filters - Dynamic tag filters are appended to this
-    list_filter_base = (StatusFilter, ITSystemRegisterFilter, HasVulnsFilter, LastSeenFilter, ("os", DropdownFilterAllValues))
+    list_filter_base = (ITSystemRegisterFilter, StatusFilter,LastSyncedFilter, HasVulnsFilter, LastSeenFilter,  ("os", DropdownFilterAllValues))
 
     # =================================
     #       Export actions & Config
@@ -803,6 +834,7 @@ class AssetAdmin(admin.ModelAdmin):
         "active_vulns",
         "active_critical_vulns",
         "last_seen",
+        "last_synced",
     )
 
     search_fields = ("name", "description","notes", "contacts__email", "systems__system_id", "systems__name", "tags__name", "os_list")
@@ -830,6 +862,7 @@ class AssetAdmin(admin.ModelAdmin):
         "ipv4s",
         "operating_systems",
         "status",
+        "last_synced",
     )
 
     fieldsets = (
@@ -874,7 +907,10 @@ class AssetAdmin(admin.ModelAdmin):
         (
             "IT Assets Meta-Data",
             {
-                "fields": ("last_modified",),
+                "fields": (
+                    "last_synced",
+                    "last_modified",
+                ),
             },
         ),
         (

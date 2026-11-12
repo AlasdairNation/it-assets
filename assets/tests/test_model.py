@@ -258,6 +258,7 @@ class AssetModelTestCase(TestCase):
         self.assertEqual(self.asset1.name, "example.dbca.wa.gov.au")
         self.assertTrue(self.asset1.has_tag(tag="TST", category="Custodian"))
         self.assertTrue(self.asset1.has_tag(tag="Web App", category="Devices"))
+        self.assertEqual(self.asset1.last_synced.date(),now().date())
         self.assertEqual(len(self.asset1.tags.all()), 2)
         self.asset1.save()
         # Validates web app device tag auto-add
@@ -359,6 +360,7 @@ class AssetModelTestCase(TestCase):
             "sources": [{"first_seen": "2026-04-29T04:41:22.032Z", "last_seen": "2026-09-30T03:10:24.967Z", "name": "NESSUS_SCAN"}],
         }
         self.asset1.update_from_raw_data(tenable_data=empty_data)
+        self.assertEqual(self.asset1.last_synced.date(),now().date())
         self.assertEqual(self.asset1.display_tags, "")
         self.assertEqual(self.asset1.asset_type, "")
         self.assertEqual(self.asset1.custodian, "")
@@ -376,6 +378,7 @@ class AssetModelTestCase(TestCase):
             "types": [],
         }
         self.asset1.update_from_raw_data(tenable_data=empty_array_data)
+        self.assertEqual(self.asset1.last_synced.date(),now().date())
         self.assertEqual(self.asset1.display_tags, "")
         self.assertEqual(self.asset1.asset_type, "")
         self.assertEqual(self.asset1.custodian, "")

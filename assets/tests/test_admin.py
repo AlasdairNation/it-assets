@@ -257,6 +257,39 @@ class AssetAdminTestCase(DepartmentAssetsAdminTestCase):
         resp = self.client.get(url)
         self.assert_contains_all_except(resp, [self.asset_vulns_and_systems])
 
+    def test_filter_by_last_synced(self):
+        """
+        Tests that the 'filter by last synced' filter works accurately
+        """
+        self.asset_vuln.last_synced = now()  # today
+        self.asset_vuln.save()
+        self.asset_vulns.last_synced = now() - timedelta(days=3)  # over a day
+        self.asset_vulns.save()
+        self.asset_vuln_and_system.last_synced = now() - timedelta(days=10)  # over a week
+        self.asset_vuln_and_system.save()
+        self.asset_vulns_and_systems.last_synced = now() - timedelta(days=40)  # over a month
+        self.asset_vulns_and_systems.save()
+
+        # synced today
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"last_synced": "LTE_1"})
+        resp = self.client.get(url)
+        self.assert_contains_only(resp, [self.asset_vuln])
+
+        # synced over a day ago
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"last_synced": "GT_1"})
+        resp = self.client.get(url)
+        self.assert_contains_all_except(resp, [self.asset_vuln])
+
+        # synced over a week ago
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"last_synced": "GT_7"})
+        resp = self.client.get(url)
+        self.assert_contains_only(resp, [self.asset_vuln_and_system, self.asset_vulns_and_systems])
+
+        # synced over a month ago
+        url = reverse("service_desk_admin:assets_asset_changelist", query={"last_synced": "GT_30"})
+        resp = self.client.get(url)
+        self.assert_contains_only(resp, [self.asset_vulns_and_systems])
+
     def test_filter_by_tag(self):
         # Test dynamic filter creation and filtering as per tag
         self.asset_vuln.add_tag(category="new_test_category", tag="NEW_TAG_VALUE")

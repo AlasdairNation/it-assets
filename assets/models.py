@@ -115,10 +115,15 @@ class Asset(ActiveMixin):
         related_name="related_assets",
         help_text="IT Systems that use this asset",
     )
-    os = models.CharField(max_length=255, verbose_name="OS", null=True, blank=True)
+    os = models.CharField(
+        max_length=255,
+        verbose_name="Primary OS",
+        null=True,
+        blank=True
+        )
     os_version = models.CharField(
         max_length=255,
-        verbose_name="OS Version",
+        verbose_name="Primary OS Version",
         null=True,
         blank=True,
         validators=[
@@ -133,13 +138,21 @@ class Asset(ActiveMixin):
     ipv4_list = models.JSONField(default=list, null=True, blank=True)
     first_seen = models.DateTimeField(
         verbose_name="First Seen",
+        help_text="First time this asset was seen by Tenable",
         null=True,
         blank=True,
     )
     last_seen = models.DateTimeField(
         verbose_name="Last Seen",
+        help_text="Last time this asset was seen by Tenable",
         null=True,
         blank=True,
+    )
+    last_synced = models.DateTimeField(
+        verbose_name="Last Synced",
+        help_text="Last time this asset was synchronised to Tenable",
+        null=True,
+        blank=True
     )
     last_modified = models.DateTimeField(auto_now=True, verbose_name="Last Modified")
     tenable_data = models.JSONField(
@@ -234,6 +247,8 @@ class Asset(ActiveMixin):
 
         # Update asset data if any
         if tenable_data:
+            # Meta data update
+            self.last_synced = now()
             # convenience rename
             t = tenable_data
             # Raw data set
