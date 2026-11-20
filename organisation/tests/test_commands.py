@@ -29,7 +29,7 @@ class TerminatedUsersTestCase(TestCase):
                 }
             ]
         )
-        self.user_not_terminated.save()
+        self.user_not_terminated.update_from_ascender_term_data(save_after=True)
         self.user_terminated = create_test_user(
             [
                 {
@@ -37,7 +37,7 @@ class TerminatedUsersTestCase(TestCase):
                 }
             ]
         )
-        self.user_terminated.save()
+        self.user_terminated.update_from_ascender_term_data(save_after=True)
         self.user_terminated_after_grace = create_test_user(
             [
                 {
@@ -45,7 +45,7 @@ class TerminatedUsersTestCase(TestCase):
                 }
             ]
         )
-        self.user_terminated_after_grace.save()
+        self.user_terminated_after_grace.update_from_ascender_term_data(save_after=True)
         self.user_terminated_then_rehired = create_test_user(
             [
                 {
@@ -56,7 +56,7 @@ class TerminatedUsersTestCase(TestCase):
                 },
             ]
         )
-        self.user_terminated_then_rehired.save()
+        self.user_terminated_then_rehired.update_from_ascender_term_data(save_after=True)
 
         self.cmd = Command()
 
@@ -229,6 +229,7 @@ def create_test_user(term_date_data) -> DepartmentUser:
         dir_sync_enabled=True,
         azure_guid=mixer.RANDOM,
         term_date_data=term_date_data,
+        account_type=2
     )
 
 
