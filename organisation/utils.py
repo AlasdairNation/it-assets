@@ -604,3 +604,74 @@ def update_freshservice_object(obj_type, id, data):
     resp = requests.put(url, auth=FRESHSERVICE_AUTH, json=data)
 
     return resp
+
+def create_freshservice_ticket(
+        subject: str,
+        description: str,
+        category: str,
+        sub_category: str,
+        status: int,
+        source: int,
+        cc_emails: list[str],
+        group_id: int | None = None
+        ) -> str | None:
+    """
+    Creates a freshservice ticket and returns the ticket ID if successful.
+    Description should be html formatted.
+    """
+    # Create ticket
+    url = f"{settings.FRESHSERVICE_ENDPOINT}/tickets"
+    data = {
+        "subject":subject,
+        "description":description,
+        "category": category,
+        "sub_category": sub_category,
+        "status": status,
+        "source": source,
+        "cc_emails":cc_emails
+    }
+    if group_id is not None:
+        data["group_id"] = group_id
+        
+    resp = requests.post(url, auth=FRESHSERVICE_AUTH, json=data)
+    resp.raise_for_status()
+
+    # Return id
+    content = resp.json()
+    if "ticket" in content:
+        return content["ticket"].get("id")
+
+def update_freshservice_ticket_status(ticket_id: int, status: int) -> None:
+    """
+    Updates the status of a given Freshservice ticket
+    """
+    url = f"{settings.FRESHSERVICE_ENDPOINT}/tickets/{ticket_id}?bypass_mandatory=true"
+    data = {
+        "status": status
+    }
+    resp = requests.put(url, auth=FRESHSERVICE_AUTH, json=data)
+    resp.raise_for_status()
+
+def add_freshservice_ticket_note(
+        ticket_id: str,
+        body: str,
+        notify_emails: list[str] = [],
+        private: bool = True,
+) -> None:
+    """
+    Adds a note to a given Freshservice ticket.
+    By default, the note is private and sends no email notifications.
+    """
+
+    # Create request
+    url = f"{settings.FRESHSERVICE_ENDPOINT}/tickets/{ticket_id}/notes"
+    data = {
+        "body": body,
+        "private": private
+    }
+    if len(notify_emails)>0:
+        data["notify_emails"] = notify_emails
+
+    # add note
+    resp = requests.post(url, auth=FRESHSERVICE_AUTH, json=data)
+    resp.raise_for_status()

@@ -60,161 +60,76 @@ class TerminatedUsersTestCase(TestCase):
 
         self.cmd = Command()
 
-
-    def test_get_actionable_terminations(self):
+    @patch("organisation.management.commands.department_users_terminated_users_handling.DepartmentUser.disable_entra_account")
+    @patch("organisation.management.commands.department_users_terminated_users_handling.Command.report_exception")
+    def test_stage_terminated_staff(self, mock_report, mock_disable):
         """
-        Validates that get_actionable_terminations retrieves only unprocessed terminated users over the grace period.
+        Validates that terminated unstaged users are accurately staged and disabled, and all other users are ignored.
         """
-        # Validates that only the terminated user is retrieved
-        terminations = self.cmd.get_actionable_terminations(terminated_account_days=14)
-        self.assertIn(self.user_terminated_after_grace, terminations)
-        self.assertEqual(len(terminations),1)
-        self.assertEqual(self.user_terminated_after_grace.termination_processed,False)
-        self.user_terminated_after_grace.termination_processed = True
-        self.user_terminated_after_grace.save()
+        # Validates users are unstaged and ready to be staged
+        self.assertEqual(self.user_terminated_after_grace.offboarding_staged_at,None)
+        self.assertEqual(self.user_terminated_after_grace.ongoing,False)
+        self.assertEqual(self.user_terminated.offboarding_staged_at,None)
+        self.assertEqual(self.user_terminated.ongoing,False)
 
-        # Validates that processed users are skipped
-        terminations = self.cmd.get_actionable_terminations(terminated_account_days=14)
-        self.assertEqual(len(terminations),0)
-
-        # Validates multi user retrieval and variable grace period setting
-        self.user_terminated_after_grace.termination_processed = False
-        self.user_terminated_after_grace.save()
-        terminations = self.cmd.get_actionable_terminations(terminated_account_days=0)
-        self.assertIn(self.user_terminated_after_grace, terminations)
-        self.assertIn(self.user_terminated, terminations)
-        self.assertEqual(len(terminations),2)
-
-        # Validates that processed user is skipped and unprocessed is returned
-        self.user_terminated.termination_processed = True
+        # faux stages a staff member yesterday
+        self.user_terminated.offboarding_staged_at = datetime.now(tz=settings.TZ) - timedelta(days=2)
         self.user_terminated.save()
-        terminations = self.cmd.get_actionable_terminations(terminated_account_days=0)
-        self.assertIn(self.user_terminated_after_grace, terminations)
-        self.assertEqual(len(terminations),1)
-        self.assertEqual(self.user_terminated_after_grace.termination_processed,False)
+        # stages staff
+        self.cmd.stage_terminated_staff(terminated_account_days=14, ticketing=False, failure_emails=False, token={})
+        staged_staff = DepartmentUser.objects.filter(offboarding_staged_at__isnull=False)
+        # validate that only terminated users are staged
+        self.assertIn(self.user_terminated_after_grace, staged_staff)
+        self.assertIn(self.user_terminated, staged_staff)
+        self.assertEqual(len(staged_staff),2)
+        # validate that the staging date is today
+        self.user_terminated_after_grace = DepartmentUser.objects.get(email=self.user_terminated_after_grace.email)
+        self.assertEqual(self.user_terminated_after_grace.offboarding_staged_at.date(),datetime.now(tz=settings.TZ).date())
+        # validates that the staging date wasn't changed
+        self.assertEqual(self.user_terminated.offboarding_staged_at.date(),(datetime.now(tz=settings.TZ) - timedelta(days=2)).date())
+        # validates that only the staged user was disabled
+        mock_disable.assert_called_once()
+        # validates there were no handled errors
+        mock_report.assert_not_called()
 
-    def test_reevaluated_processed_users(self):
-        """
-        Evaluates that users who are marked as processed are unmarked if they are no longer terminated
-        """
-
-        self.assertEqual(len(DepartmentUser.objects.filter(termination_processed=True)),0)
-
-        # User should not be unmarked
-        self.user_terminated_after_grace.termination_processed = True
-        self.user_terminated_after_grace.save()
-
-        # User SHOULD be unmarked - Unterminated
-        self.user_terminated_then_rehired.termination_processed = True
-        self.user_terminated_then_rehired.save()
-
-        # user SHOULD be unmarked - Within grace period
-        self.user_terminated.termination_processed = True
+    @patch("organisation.management.commands.department_users_terminated_users_handling.Command.report_exception")
+    def test_unstage_returning_staff(self, mock_report):
+        # stages both terminated users
+        # staged 2 days ago - But has returned
+        self.user_terminated.offboarding_staged_at = datetime.now(tz=settings.TZ) - timedelta(days=2)
+        self.user_terminated.ongoing = True
+        self.user_terminated.termination_date = None
         self.user_terminated.save()
-
-        # Evaluates that only those terminated and past their grace period aren't reset.
-        self.assertEqual(len(DepartmentUser.objects.filter(termination_processed=True)),3)
-        reset_user_count = self.cmd.reevaluate_processed_users(14)
-        processed_users = DepartmentUser.objects.filter(termination_processed=True)
-        self.assertEqual(len(processed_users),1)
-        self.assertEqual(reset_user_count,2)
-        self.assertIn(self.user_terminated_after_grace, processed_users)
-
-    @patch("organisation.management.commands.department_users_terminated_users_handling.ms_graph_remove_user_licenses")
-    def test_remove_user_licenses_reporting(self, mock_remove_licenses):
-        """
-        Tests that users have their removed groups accurately summarized, and ms_graph_remove_user_licenses to called on each.
-        """
-        a_groups =  ["A_removed_group1","A_removed_group2"]
-        b_groups = ["B_removed_group1"]
-        c_groups = []
-        mock_remove_licenses.side_effect = [a_groups,b_groups,c_groups]
-        success_count, failure_count, termination_record = self.cmd.remove_user_licenses(
-            users=[
-                self.user_terminated_after_grace,
-                self.user_terminated, 
-                self.user_terminated_then_rehired,
-            ],
-            token={},
-            send_failure_email=False
-            )
-        self.assertEqual(mock_remove_licenses.call_count,3)
-        self.assertEqual(success_count,3)
-        self.assertEqual(failure_count,0)
-        self.assertEqual(len(termination_record), 3)
-        self.assertTrue(self.user_terminated_after_grace.email in termination_record)
-        self.assertEqual(termination_record[self.user_terminated_after_grace.email],a_groups)
-        self.assertTrue(self.user_terminated.email in termination_record)
-        self.assertEqual(termination_record[self.user_terminated.email],b_groups)
-        self.assertTrue(self.user_terminated_then_rehired.email in termination_record)
-        self.assertEqual(termination_record[self.user_terminated_then_rehired.email],c_groups)
-
-    @patch("organisation.management.commands.department_users_terminated_users_handling.ms_graph_remove_user_licenses")
-    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend") # prevents email sending and allows for mails to be read and validated in testing
-    def test_remove_user_licenses_exceptions_and_emails(self, mock_remove_licenses):
-        """
-        Validates that exceptions are handled properly and email contents is properly formatted
-        """
-        # Should fail on all but user_terminated_then_rehired.
-        b_groups = None # emulates token acquisition failure
-        c_groups = ["C_removed_group1","C_removed_group2"] # Should succeed
-        mock_remove_licenses.side_effect = [b_groups, c_groups]
-        self.user_terminated_after_grace.azure_guid = None # Will trigger KeyError
+        # staged today
+        self.user_terminated_after_grace.offboarding_staged_at = datetime.now(tz=settings.TZ)
         self.user_terminated_after_grace.save()
+        
+        # unstage users
+        self.cmd.unstage_returning_staff(terminated_account_days=24, ticketing=False, failure_emails=False)
+        staged_staff = DepartmentUser.objects.filter(offboarding_staged_at__isnull=False)
 
-        success_count, failure_count, termination_record = self.cmd.remove_user_licenses(
-            users=[
-                self.user_terminated_after_grace,
-                self.user_terminated, 
-                self.user_terminated_then_rehired,
-            ],
-            token={},
-            send_failure_email=True
-            )
-        # Logical flow validation
-        self.assertEqual(mock_remove_licenses.call_count,2) # Fails inside second call
-        self.assertEqual(success_count,1)
-        self.assertEqual(failure_count,2)
-        self.assertEqual(len(termination_record), 1)
-        self.assertEqual(termination_record[self.user_terminated_then_rehired.email],c_groups)
+        # retrieve changes from DB
+        self.user_terminated = DepartmentUser.objects.get(email=self.user_terminated.email)
 
-        # Mail content validation
-        self.assertEqual(len(mail.outbox),2)
-        first_mail = mail.outbox[0]
-        second_mail = mail.outbox[1]
+        self.assertIn(self.user_terminated_after_grace, staged_staff)
+        self.assertNotIn(self.user_terminated, staged_staff)
+        self.assertEqual(len(staged_staff),1)
+        # validate that the staging date is today
+        self.assertEqual(self.user_terminated_after_grace.offboarding_staged_at.date(),datetime.now(tz=settings.TZ).date())
+        # validates that the staging date wasn't changed
+        self.assertEqual(self.user_terminated.offboarding_staged_at,None)
 
-        self.assertTrue(self.user_terminated_after_grace.email in first_mail.body)
-        self.assertTrue(self.user_terminated_after_grace.email in first_mail.subject)
-        self.assertTrue("azure_guid" in first_mail.body)
+        # Asserts no errors occured
+        mock_report.assert_not_called()
 
-        self.assertTrue(self.user_terminated.email in second_mail.body)
-        self.assertTrue(self.user_terminated.email in second_mail.subject)
-        self.assertTrue("token" in second_mail.body)
+    def test_offboard_staged_staff(self):
+        pass
 
-    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend") # prevents email sending and allows for mails to be read and validated in testing
-    def test_summarize_results(self):
-        """
-        Validates that the summary email accurately reports stats and attaches the summary properly
-        """
-        summary_data = {"example_user@user.com":["blah","blah2"]}
-        self.cmd.summarize_results(
-            success_count=1001,
-            failure_count=2002,
-            reset_count=3003,
-            actionable_terms_count=4004,
-            summary=summary_data,
-            send_summary_email=True
-        )
-        self.assertEqual(len(mail.outbox),1)
-        summary_mail = mail.outbox[0]
-        self.assertEqual(summary_mail.subject, "Termination Processing Summary")
-        self.assertIn(f"unprocessed: 3003" ,summary_mail.body)
-        self.assertIn(f"terminations: 4004" ,summary_mail.body)
-        self.assertIn(f"successfully: 1001" ,summary_mail.body)
-        self.assertIn(f"unsuccessfully: 2002" ,summary_mail.body)
-        file = summary_mail.attachments[0]
-        self.assertEqual(json.loads(file.content),summary_data)
-        self.assertTrue(file.filename.endswith(".json"))
+    def test_report_exception(self):
+        pass
+
+    def test_ticket_management(self):
+        pass
         
 
 # Creates a DepartmentUser object for testing
@@ -229,6 +144,10 @@ def create_test_user(term_date_data) -> DepartmentUser:
         dir_sync_enabled=True,
         azure_guid=mixer.RANDOM,
         term_date_data=term_date_data,
+        ongoing=False,
+        termination_date=None,
+        offboarding_staged_at=None,
+        offboarding_ticket_id=None,
         account_type=2
     )
 

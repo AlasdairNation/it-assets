@@ -246,10 +246,16 @@ class DepartmentUser(models.Model):
     )
     assigned_entra_groups = JSONField(default=dict, null=True, blank=True, editable=False)
 
-    # Used exclusively for azure account deletion
-    azure_account_deletion_staged = models.BooleanField(default=False, editable=False, help_text="Entra ID account was disabled and an automatic deletion date was set.")
-    azure_account_deletion_date = models.DateField(null=True, editable=False, help_text="Entra ID account and Department User record will be deleted on this date.")
+    # Used exclusively for automated offboarding
+    offboarding_staged_at = models.DateTimeField(null=True, editable=False, help_text="Date that the DepartmentUser record and Entra ID account were initially staged for deletion.")
     azure_exempt_from_deletion = models.BooleanField(default=False, help_text = "Entra ID account and Department User record are exempt from being automatically deleted after the grace period.")
+    offboarding_ticket_id = models.CharField(
+        max_length=128,
+        null=True,
+        blank=True,
+        verbose_name="Offboarding freshservice ticket ID",
+        help_text="Ticket used to report the progress of account offboarding",
+    )
 
     def __str__(self):
         return self.email
